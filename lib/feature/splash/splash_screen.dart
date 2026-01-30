@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:chatloop/feature/dashboard/userdetails.dart';
 import 'package:chatloop/feature/login/login_screen.dart';
+import 'package:chatloop/feature/userdetails.dart/userdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    debugPrint('SplashScreen: Checking login status... result: $isLoggedIn');
 
     if (!mounted) return;
 

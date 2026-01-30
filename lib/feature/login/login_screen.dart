@@ -1,8 +1,9 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:chatloop/feature/dashboard/userdetails.dart';
+import 'package:chatloop/feature/userdetails.dart/userdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_page_widgets.dart';
 import 'login_provider.dart';
@@ -16,12 +17,41 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   @override
+  void initState() {
+    super.initState();
+    _checkAutoLogin();
+  }
+
+  Future<void> _checkAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    if (isLoggedIn && mounted) {
+      final Map<String, String> userData = {
+        'fullName': prefs.getString('fullName') ?? '',
+        'username': prefs.getString('username') ?? '',
+        'email': prefs.getString('email') ?? '',
+        'photoUrl': prefs.getString('photoUrl') ?? '',
+        'dob': prefs.getString('dob') ?? '',
+        'gender': prefs.getString('gender') ?? '',
+        'instagram': prefs.getString('instagram') ?? '',
+        'youtube': prefs.getString('youtube') ?? '',
+      };
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => UserDetails(userData: userData)),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => LoginProvider(),
       child: Consumer<LoginProvider>(
         builder: (context, provider, child) {
           return Scaffold(
+            primary: false,
+
             backgroundColor: const Color(0xFFFFEBF2),
             body: SafeArea(
               child: SingleChildScrollView(
@@ -54,8 +84,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      ElevatedButton(
-                        onPressed: () async {
+                      SlideToActionButton(
+                        text: 'Slide to Sign In with Google',
+                        icon: Image.network(
+                          'https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                        actionColor: Colors.white,
+                        baseColor: const Color(0xFFF5F5F5),
+                        onAction: () async {
                           final userData = await provider.signInWithGoogle();
                           if (userData != null && mounted) {
                             Navigator.pushReplacement(
@@ -75,24 +113,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ),
 
                       const SizedBox(height: 24),
@@ -179,8 +199,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 48),
 
-                      ElevatedButton(
-                        onPressed: () async {
+                      SlideToActionButton(
+                        text: 'Slide to Finish',
+                        enabled: provider.isFormValid,
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        onAction: () async {
                           if (!provider.isFormValid) return;
 
                           bool success = await provider.login();
@@ -206,29 +229,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: provider.isFormValid
-                              ? const Color(0xFFFF4081) // 💖 FULL PINK
-                              : const Color.fromARGB(
-                                  255,
-                                  126,
-                                  104,
-                                  111,
-                                ).withOpacity(0.4), // 🌸 LIGHT PINK
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: provider.isFormValid ? 4 : 0,
-                        ),
-                        child: const Text(
-                          'OK',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ),
                     ],
                   ),

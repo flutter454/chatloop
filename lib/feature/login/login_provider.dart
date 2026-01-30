@@ -17,7 +17,19 @@ class LoginProvider extends ChangeNotifier {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  LoginProvider() {
+    fullNameController.addListener(_onFieldChanged);
+    usernameController.addListener(_onFieldChanged);
+    dobController.addListener(_onFieldChanged);
+    instagramController.addListener(_onFieldChanged);
+    youtubeController.addListener(_onFieldChanged);
+  }
+
   final List<String> genderOptions = ['Male', 'Female', 'Other'];
+
+  void _onFieldChanged() {
+    notifyListeners();
+  }
 
   void setGender(String? gender) {
     selectedGender = gender;
@@ -99,7 +111,6 @@ class LoginProvider extends ChangeNotifier {
       await prefs.setString('gender', selectedGender ?? '');
       await prefs.setString('instagram', instagramController.text);
       await prefs.setString('youtube', youtubeController.text);
-      await prefs.getBool('isLoggedIn');
       return true;
     }
     return false;
@@ -147,12 +158,12 @@ class LoginProvider extends ChangeNotifier {
   }
 
   bool get isFormValid {
-    return fullNameController.text.isNotEmpty &&
-        usernameController.text.isNotEmpty &&
-        dobController.text.isNotEmpty &&
+    return fullNameController.text.trim().isNotEmpty &&
+        usernameController.text.trim().isNotEmpty &&
+        dobController.text.trim().isNotEmpty &&
         selectedGender != null &&
-        instagramController.text.isNotEmpty &&
-        youtubeController.text.isNotEmpty;
+        instagramController.text.trim().isNotEmpty &&
+        youtubeController.text.trim().isNotEmpty;
   }
 
   @override
