@@ -5,14 +5,12 @@ import 'dart:io';
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
-import '../story/add_story_screen.dart';
-import '../story/story_editor_provider.dart';
+import '../../posts/media_picker_screen.dart';
 import '../story/story_provider.dart';
 import 'story_view_provider.dart';
 
@@ -317,32 +315,10 @@ class HomeWidgets {
   }
 
   static Future<void> _handleStoryCreation(BuildContext context) async {
-    final storyProvider = context.read<StoryProvider>();
-    final XFile? file = await storyProvider.pickStoryMedia(
+    Navigator.push(
       context,
-      ImageSource.gallery,
+      MaterialPageRoute(builder: (context) => const MediaPickerScreen()),
     );
-
-    if (file != null && context.mounted) {
-      final bool isVideo =
-          file.path.toLowerCase().endsWith('.mp4') ||
-          file.path.toLowerCase().endsWith('.mov') ||
-          file.path.toLowerCase().endsWith('.avi') ||
-          file.path.toLowerCase().endsWith('.mkv');
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChangeNotifierProvider(
-            create: (_) => StoryEditorProvider(),
-            child: StoryEditorScreen(
-              file: File(file.path),
-              type: isVideo ? StoryMediaType.video : StoryMediaType.image,
-            ),
-          ),
-        ),
-      );
-    }
   }
 
   static void _showStoryView(

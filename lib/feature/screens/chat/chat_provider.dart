@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chatloop/feature/screens/chat/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -38,7 +40,7 @@ class ChatProvider extends ChangeNotifier {
 
   ChatProvider() {
     _fetchUsersAndNotes();
-    loadMyChats();
+    subscribeToChats();
   }
 
   void setTabIndex(int index) {
@@ -145,7 +147,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUsers() async {
-    await Future.wait([_fetchUsersAndNotes(), loadMyChats()]);
+    await Future.wait([_fetchUsersAndNotes(), subscribeToChats()]);
   }
 
   String getUserName(Map<String, dynamic> user) {
@@ -168,25 +170,50 @@ class ChatProvider extends ChangeNotifier {
 
   // Chat Integration
   final ChatService _chatService = ChatService();
+  StreamSubscription<List<Map<String, dynamic>>>? _chatsSubscription;
   List<Map<String, dynamic>> _chats = [];
   List<Map<String, dynamic>> get chats => _chats;
 
-  Future<void> loadMyChats() async {
+  Future<void> subscribeToChats() async {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
 
-    _isLoading = true;
-    notifyListeners();
+    _chatsSubscription?.cancel();
 
-    try {
-      _chats = await _chatService.getMyChats(uid);
-    } catch (e) {
-      debugPrint('Error loading chats: $e');
-      _errorMessage = 'Error loading chats. Did you run the SQL script? $e';
-    } finally {
-      _isLoading = false;
+    // We start with loading state if empty
+    if (_chats.isEmpty) {
+      _isLoading = true;
       notifyListeners();
     }
+
+    _chatsSubscription = _chatService
+        .getChatsStream(uid)
+        .listen(
+          (chatsData) async {
+            try {
+              // Enrich with profiles and last messages
+              final enriched = await _chatService.enrichChats(chatsData, uid);
+              _chats = enriched;
+              _isLoading = false;
+              _errorMessage = null;
+              notifyListeners();
+            } catch (e) {
+              debugPrint('Error enriching chats in stream: $e');
+            }
+          },
+          onError: (e) {
+            debugPrint('Error in chats stream: $e');
+            _errorMessage = 'Connection error: $e';
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
+  }
+
+  // Deprecated one-time fetch, but we can keep it or alias it
+  // Actually, let's just make loadMyChats call subscribeToChats to enforce streaming
+  Future<void> loadMyChats() async {
+    await subscribeToChats();
   }
 
   // Create chat from user selection
@@ -199,5 +226,11 @@ class ChatProvider extends ChangeNotifier {
       debugPrint('Error creating chat: $e');
       return null;
     }
+  }
+
+  @override
+  void dispose() {
+    _chatsSubscription?.cancel();
+    super.dispose();
   }
 }

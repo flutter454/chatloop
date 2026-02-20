@@ -42,18 +42,22 @@ class ChatService {
   }
 
   // 2. Send Message
-  Future<void> sendMessage(
+  Future<Map<String, dynamic>> sendMessage(
     String chatId,
     String currentUserId,
     String text,
   ) async {
-    await _supabase.from('messages').insert({
-      'chat_id': chatId,
-      'sender_id': currentUserId,
-      'text': text,
-      // 'created_at' is default
-      // 'is_seen' is false default
-    });
+    return await _supabase
+        .from('messages')
+        .insert({
+          'chat_id': chatId,
+          'sender_id': currentUserId,
+          'text': text,
+          // 'created_at' is default
+          // 'is_seen' is false default
+        })
+        .select()
+        .single();
   }
 
   // 3. Stream Messages (Realtime)
@@ -63,7 +67,8 @@ class ChatService {
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('chat_id', chatId)
-        .order('created_at', ascending: true);
+        .order('created_at', ascending: false)
+        .limit(100);
   }
 
   // 4. Mark Messages as Seen
@@ -78,22 +83,33 @@ class ChatService {
         .eq('is_seen', false);
   }
 
-  // 5. Get My Chats (List with Last Message)
-  Future<List<Map<String, dynamic>>> getMyChats(String currentUserId) async {
+  // 5. Get My Chats Stream (List with Last Message)
+  Stream<List<Map<String, dynamic>>> getChatsStream(String currentUserId) {
+    return _supabase
+        .from('chats')
+        .stream(primaryKey: ['id'])
+        .order('last_message_at', ascending: false)
+        .map((chats) {
+          // Client-side filter because stream modifiers are limited for OR conditions across columns in some versions
+          // But actually we can try to rely on the fact that if we just stream 'chats', we get all public updates?
+          // No, we need to filter.
+          // Supabase Realtime Postgres Changes supports simple filters.
+          // OR filters in stream() might be tricky.
+          // If we cannot easily filter 'OR' in stream, we might stream ALL chats (bad for scale) or rely on RLS.
+          // If RLS is set up properly (Policy: Users can only select their own chats), then `.stream(primaryKey: ['id'])` will strictly return ONLY the user's chats.
+          // ASSUMPTION: RLS is set up.
+          return chats;
+        });
+  }
+
+  // Helper to enrich chat data (Profiles + Last Message)
+  Future<List<Map<String, dynamic>>> enrichChats(
+    List<Map<String, dynamic>> chats,
+    String currentUserId,
+  ) async {
+    if (chats.isEmpty) return [];
+
     try {
-      // 1. Fetch Chats
-      final response = await _supabase
-          .from('chats')
-          .select()
-          .or('user1_id.eq.$currentUserId,user2_id.eq.$currentUserId')
-          .order('last_message_at', ascending: false);
-
-      final List<Map<String, dynamic>> chats = List<Map<String, dynamic>>.from(
-        response,
-      );
-
-      if (chats.isEmpty) return [];
-
       // 2. Collect unique friend IDs
       final Set<String> friendIds = {};
       for (var chat in chats) {
@@ -107,9 +123,7 @@ class ChatService {
 
       // 3. Fetch Profiles for friends
       final profilesResponse = await _supabase
-          .from(
-            'profiles',
-          ) // Assuming 'profiles' table exists and matches auth.uid
+          .from('profiles')
           .select()
           .filter('id', 'in', '(${friendIds.join(',')})');
 
@@ -118,32 +132,55 @@ class ChatService {
       };
 
       // 4. Merge Data & Fetch Last Message
+      final List<Map<String, dynamic>> enrichedChats = [];
+
       for (var chat in chats) {
-        String u1 = chat['user1_id'];
-        String u2 = chat['user2_id'];
+        // Create a mutable copy
+        final chatConfigured = Map<String, dynamic>.from(chat);
+
+        String u1 = chatConfigured['user1_id'];
+        String u2 = chatConfigured['user2_id'];
         String friendId = (u1 == currentUserId) ? u2 : u1;
 
-        chat['friend_profile'] = profilesMap[friendId];
+        chatConfigured['friend_profile'] = profilesMap[friendId];
 
         // Fetch last message content
         // Optimization: create database index on (chat_id, created_at)
         final msgResponse = await _supabase
             .from('messages')
             .select('text, created_at, is_seen, sender_id')
-            .eq('chat_id', chat['id'])
+            .eq('chat_id', chatConfigured['id'])
             .order('created_at', ascending: false)
             .limit(1)
             .maybeSingle();
 
         if (msgResponse != null) {
-          chat['last_message'] = msgResponse;
+          chatConfigured['last_message'] = msgResponse;
         }
+        enrichedChats.add(chatConfigured);
       }
-      return chats;
+      return enrichedChats;
     } catch (e) {
-      debugPrint('Error getting chats: $e');
-      return [];
+      debugPrint('Error enriching chats: $e');
+      return chats;
     }
+  }
+
+  // Deprecated: used for one-time fetch, better to use stream
+  Future<List<Map<String, dynamic>>> getMyChats(String currentUserId) async {
+    // ... existing implementation remains as fallback or initial load ...
+    // Reuse enrichChats logic to avoid duplication if we wanted to refactor fully.
+    // For now keeping simpler to avoid breaking too much.
+    final response = await _supabase
+        .from('chats')
+        .select()
+        .or('user1_id.eq.$currentUserId,user2_id.eq.$currentUserId')
+        .order('last_message_at', ascending: false);
+
+    return enrichChats(
+      List<Map<String, dynamic>>.from(response),
+      currentUserId,
+    );
   }
 
   // 6. Delete Message

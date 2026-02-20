@@ -3,7 +3,7 @@ import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:chatloop/feature/screens/chat/chat_note_screen/create_note_screen.dart';
 import 'package:chatloop/feature/screens/chat/chat_note_screen/note_provider.dart';
 import 'package:chatloop/feature/screens/chat/chat_provider.dart';
-import 'package:chatloop/feature/screens/chat/message_screen.dart';
+import 'package:chatloop/feature/screens/chat/messages.dart/message_screen.dart';
 import 'package:chatloop/feature/screens/chat/widgets/active_user_item.dart';
 import 'package:chatloop/feature/screens/chat/widgets/chat_tab.dart';
 import 'package:flutter/material.dart';
