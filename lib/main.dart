@@ -3,6 +3,7 @@ import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:chatloop/feature/login_main/splash/splash_screen.dart';
 import 'package:chatloop/feature/screens/home/home_page/home_page_provider.dart';
 import 'package:chatloop/feature/screens/home/story/story_provider.dart';
+import 'package:chatloop/feature/screens/posts/post_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StoryProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => HomePageProvider()),
+        ChangeNotifierProvider(create: (_) => PostProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

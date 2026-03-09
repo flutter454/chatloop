@@ -5,7 +5,6 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:provider/provider.dart';
 
 import 'media_picker_provider.dart';
-import 'post_provider.dart';
 import 'post_upload_screen.dart';
 
 class MediaPickerScreen extends StatelessWidget {
@@ -127,13 +126,10 @@ class _MediaPickerContent extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ChangeNotifierProvider(
-                        create: (_) => PostProvider(),
-                        child: PostUploadScreen(
-                          file: file,
-                          isVideo:
-                              provider.selectedAsset!.type == AssetType.video,
-                        ),
+                      builder: (context) => PostUploadScreen(
+                        file: file,
+                        isVideo:
+                            provider.selectedAsset!.type == AssetType.video,
                       ),
                     ),
                   );

@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:chatloop/core/models/post_model.dart';
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -397,6 +398,151 @@ class HomeWidgets {
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  REAL SUPABASE POST WIDGET
+  // ═══════════════════════════════════════════════════════════════
+  static Widget buildSupabasePost(BuildContext context, PostModel post) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Header (avatar + username) ──────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey[300],
+                backgroundImage: post.userAvatarUrl != null
+                    ? NetworkImage(post.userAvatarUrl!)
+                    : null,
+                child: post.userAvatarUrl == null
+                    ? const Icon(Icons.person, color: Colors.white, size: 20)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  post.userName ?? 'User',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const Icon(Icons.more_horiz, size: 20),
+            ],
+          ),
+        ),
+
+        // ── Media (image or video) ──────────────────────────────
+        if (post.signedUrl != null && post.signedUrl!.isNotEmpty)
+          post.isVideo
+              ? _SupabaseVideoWidget(url: post.signedUrl!)
+              : AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.network(
+                    post.signedUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: Colors.grey[100],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) {
+                      return Container(
+                        color: Colors.grey[100],
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                )
+        else
+          AspectRatio(
+            aspectRatio: 1,
+            child: Container(
+              color: Colors.grey[100],
+              child: const Center(
+                child: Icon(
+                  Icons.image_not_supported,
+                  size: 48,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ),
+
+        // ── Action buttons ──────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite_border_rounded, size: 28),
+              const SizedBox(width: 16),
+              const Icon(Icons.mode_comment_outlined, size: 26),
+              const SizedBox(width: 16),
+              const Icon(Icons.send_outlined, size: 26),
+              const Spacer(),
+              const Icon(Icons.bookmark_border_rounded, size: 28),
+            ],
+          ),
+        ),
+
+        // ── Caption ─────────────────────────────────────────────
+        if (post.caption.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(color: Colors.black, fontSize: 14),
+                children: [
+                  TextSpan(
+                    text: '${post.userName ?? 'User'} ',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  TextSpan(text: post.caption),
+                ],
+              ),
+            ),
+          ),
+
+        // ── Timestamp ───────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Text(
+            _timeAgo(post.createdAt),
+            style: TextStyle(color: Colors.grey[400], fontSize: 12),
+          ),
+        ),
+
+        const Divider(height: 1),
+      ],
+    );
+  }
+
+  static String _timeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inDays > 7) {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    } else if (diff.inDays > 0) {
+      return '${diff.inDays}d ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 }
 
@@ -1033,5 +1179,97 @@ class StoryViewer extends StatelessWidget {
         provider.resume();
       }
     });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VIDEO WIDGET FOR SUPABASE POSTS (Home Feed)
+// ═══════════════════════════════════════════════════════════════
+class _SupabaseVideoWidget extends StatefulWidget {
+  final String url;
+  const _SupabaseVideoWidget({required this.url});
+
+  @override
+  State<_SupabaseVideoWidget> createState() => _SupabaseVideoWidgetState();
+}
+
+class _SupabaseVideoWidgetState extends State<_SupabaseVideoWidget> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+  bool _showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() => _initialized = true);
+            }
+          })
+          .catchError((e) {
+            debugPrint('Video init error: $e');
+          });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          color: Colors.black,
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _showControls = !_showControls);
+      },
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller),
+            if (_showControls)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _controller.value.isPlaying
+                        ? _controller.pause()
+                        : _controller.play();
+                  });
+                },
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    _controller.value.isPlaying
+                        ? Icons.pause
+                        : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

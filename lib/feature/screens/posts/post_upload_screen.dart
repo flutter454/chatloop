@@ -6,7 +6,30 @@ import 'package:video_player/video_player.dart';
 
 import 'post_provider.dart';
 
-class PostUploadScreen extends StatefulWidget {
+class UploadState extends ChangeNotifier {
+  final TextEditingController captionController = TextEditingController();
+  VideoPlayerController? videoController;
+  bool videoInitialized = false;
+
+  UploadState(File file, bool isVideo) {
+    if (isVideo) {
+      videoController = VideoPlayerController.file(file)
+        ..initialize().then((_) {
+          videoInitialized = true;
+          notifyListeners();
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    captionController.dispose();
+    videoController?.dispose();
+    super.dispose();
+  }
+}
+
+class PostUploadScreen extends StatelessWidget {
   final File file;
   final bool isVideo;
 
@@ -17,34 +40,20 @@ class PostUploadScreen extends StatefulWidget {
   });
 
   @override
-  State<PostUploadScreen> createState() => _PostUploadScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => UploadState(file, isVideo),
+      child: const _PostUploadScreenBody(),
+    );
+  }
 }
 
-class _PostUploadScreenState extends State<PostUploadScreen> {
-  final TextEditingController _captionController = TextEditingController();
-  VideoPlayerController? _videoController;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isVideo) {
-      _videoController = VideoPlayerController.file(widget.file)
-        ..initialize().then((_) {
-          setState(() {});
-        });
-    }
-  }
-
-  @override
-  void dispose() {
-    _captionController.dispose();
-    _videoController?.dispose();
-    super.dispose();
-  }
+class _PostUploadScreenBody extends StatelessWidget {
+  const _PostUploadScreenBody();
 
   @override
   Widget build(BuildContext context) {
-    // 1. Watch the provider
+    final uploadState = context.watch<UploadState>();
     final postProvider = context.watch<PostProvider>();
 
     return Scaffold(
@@ -90,15 +99,11 @@ class _PostUploadScreenState extends State<PostUploadScreen> {
                                       width: 80,
                                       height: 120,
                                       color: Colors.grey[200],
-                                      child:
-                                          widget.isVideo &&
-                                              _videoController != null &&
-                                              _videoController!
-                                                  .value
-                                                  .isInitialized
-                                          ? VideoPlayer(_videoController!)
+                                      child: uploadState.videoController != null && uploadState.videoInitialized
+                                          ? VideoPlayer(uploadState.videoController!)
                                           : Image.file(
-                                              widget.file,
+                                              context.findAncestorWidgetOfExactType<PostUploadScreen>()?.file 
+                                                  ?? File(''),
                                               fit: BoxFit.cover,
                                             ),
                                     ),
@@ -129,11 +134,10 @@ class _PostUploadScreenState extends State<PostUploadScreen> {
                               // Caption Input
                               Expanded(
                                 child: TextField(
-                                  controller: _captionController,
+                                  controller: uploadState.captionController,
                                   maxLines: 5,
                                   decoration: const InputDecoration(
-                                    hintText:
-                                        'Write a caption and add hashtags...',
+                                    hintText: 'Write a caption and add hashtags...',
                                     border: InputBorder.none,
                                     hintStyle: TextStyle(color: Colors.grey),
                                   ),
@@ -197,11 +201,17 @@ class _PostUploadScreenState extends State<PostUploadScreen> {
                           onPressed: postProvider.isUploading
                               ? null
                               : () {
+                                  // Find original widget context to access file and isVideo
+                                  final rootWidget = context.findAncestorWidgetOfExactType<PostUploadScreen>();
+                                  if (rootWidget == null) return;
+                                  
                                   postProvider.uploadPost(
-                                    file: widget.file,
-                                    caption: _captionController.text,
-                                    isVideo: widget.isVideo,
+                                    file: rootWidget.file,
+                                    caption: uploadState.captionController.text,
+                                    isVideo: rootWidget.isVideo,
                                     onSuccess: () {
+                                      // Refresh the feed
+                                      postProvider.fetchPosts(forceRefresh: true);
                                       // Pop to Home (root) or show success
                                       Navigator.of(
                                         context,
