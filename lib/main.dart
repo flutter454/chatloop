@@ -4,6 +4,9 @@ import 'package:chatloop/feature/login_main/splash/splash_screen.dart';
 import 'package:chatloop/feature/screens/home/home_page/home_page_provider.dart';
 import 'package:chatloop/feature/screens/home/story/story_provider.dart';
 import 'package:chatloop/feature/screens/posts/post_provider.dart';
+import 'package:chatloop/feature/screens/profile/highlights/highlights_service.dart';
+import 'package:chatloop/feature/screens/profile/profile_provider.dart';
+import 'package:chatloop/feature/screens/reels/reels_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,6 +34,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => HomePageProvider()),
         ChangeNotifierProvider(create: (_) => PostProvider()),
+        ChangeNotifierProvider(create: (_) => ReelsProvider()),
+        ChangeNotifierProvider(create: (_) => HighlightsNotifier()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

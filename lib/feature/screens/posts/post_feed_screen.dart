@@ -5,6 +5,8 @@ import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../core/models/post_model.dart';
+import '../../login_main/dashboard/dashboard_provider.dart';
+import 'comments_bottom_sheet.dart';
 import 'media_picker_screen.dart';
 import 'post_provider.dart';
 
@@ -148,6 +150,21 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dashboardProvider = context.watch<DashboardProvider>();
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isMyPost = post.userId == currentUserId;
+
+    final displayAvatar =
+        (isMyPost && dashboardProvider.userPhotoUrl.isNotEmpty)
+        ? dashboardProvider.userPhotoUrl
+        : post.userAvatarUrl;
+
+    final displayUserName = (isMyPost && dashboardProvider.userName.isNotEmpty)
+        ? dashboardProvider.userName
+        : (post.userName != null && post.userName!.isNotEmpty
+              ? post.userName!
+              : 'User');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -159,17 +176,17 @@ class _PostCard extends StatelessWidget {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: post.userAvatarUrl != null
-                    ? NetworkImage(post.userAvatarUrl!)
+                backgroundImage: displayAvatar != null
+                    ? NetworkImage(displayAvatar)
                     : null,
-                child: post.userAvatarUrl == null
+                child: displayAvatar == null
                     ? const Icon(Icons.person, color: Colors.white, size: 20)
                     : null,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  post.userName ?? 'User',
+                  displayUserName,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -237,14 +254,8 @@ class _PostCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.favorite_border, size: 26),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline, size: 24),
-                onPressed: () {},
-              ),
+              _LikeButton(postId: post.id.toString(), size: 26),
+              _CommentButton(postId: post.id.toString(), size: 24),
               IconButton(
                 icon: const Icon(Icons.send_outlined, size: 24),
                 onPressed: () {},
@@ -267,7 +278,7 @@ class _PostCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.black, fontSize: 14),
                 children: [
                   TextSpan(
-                    text: '${post.userName ?? 'User'} ',
+                    text: '$displayUserName ',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   TextSpan(text: post.caption),
@@ -291,10 +302,8 @@ class _PostCard extends StatelessWidget {
   }
 
   void _showPostOptions(BuildContext context) {
-    final provider = context.read<PostProvider>();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
+    
     showModalBottomSheet(
       context: context,
       builder: (sheetCtx) => SafeArea(
@@ -304,14 +313,25 @@ class _PostCard extends StatelessWidget {
             if (currentUserId == post.userId)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text(
-                  'Delete Post',
-                  style: TextStyle(color: Colors.red),
-                ),
+                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
                 onTap: () async {
-                  Navigator.pop(sheetCtx); // close the sheet first
+                  // Capture the provider and scaffold messenger outside the async gap
+                  final provider = context.read<PostProvider>();
+                  final navigator = Navigator.of(sheetCtx);
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                  
+                  // Pop the bottom sheet first
+                  navigator.pop();
+                  
                   try {
                     await provider.deletePost(post);
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Post deleted successfully'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                   } catch (e) {
                     scaffoldMessenger.showSnackBar(
                       SnackBar(
@@ -362,15 +382,19 @@ class VideoPostState extends ChangeNotifier {
   bool initialized = false;
   bool userPaused = false;
 
-  VideoPostState(String url) : controller = VideoPlayerController.networkUrl(Uri.parse(url)) {
+  VideoPostState(String url)
+    : controller = VideoPlayerController.networkUrl(Uri.parse(url)) {
     controller.setLooping(true);
     controller.setVolume(0);
-    controller.initialize().then((_) {
-      initialized = true;
-      notifyListeners();
-    }).catchError((e) {
-      debugPrint('Video init error: $e');
-    });
+    controller
+        .initialize()
+        .then((_) {
+          initialized = true;
+          notifyListeners();
+        })
+        .catchError((e) {
+          debugPrint('Video init error: $e');
+        });
   }
 
   @override
@@ -504,6 +528,171 @@ class _VideoPostWidget extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LIKE BUTTON WIDGET
+// ═══════════════════════════════════════════════════════════════
+class _LikeButton extends StatelessWidget {
+  final double size;
+  final String postId;
+
+  const _LikeButton({required this.postId, this.size = 26});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<PostProvider>();
+    final isLiked = provider.isLiked(postId);
+    final likers = provider.getLikers(postId);
+    final likeCount = likers.length;
+
+    final dashboard = context.watch<DashboardProvider>();
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? 'me';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(
+            isLiked ? Icons.favorite : Icons.favorite_border,
+            color: isLiked ? Colors.red : null,
+            size: size,
+          ),
+          onPressed: () {
+            context.read<PostProvider>().toggleLike(
+              postId,
+              currentUserId: currentUserId,
+              userName: dashboard.userName.isNotEmpty
+                  ? dashboard.userName
+                  : 'Me',
+              avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                  ? dashboard.userPhotoUrl
+                  : 'https://i.pravatar.cc/150?u=me',
+            );
+          },
+        ),
+        if (likeCount > 0)
+          GestureDetector(
+            onTap: () => _showLikersBottomSheet(context, likers),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Text(
+                '$likeCount',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showLikersBottomSheet(
+    BuildContext context,
+    List<Map<String, dynamic>> likers,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Likes',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(height: 30),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: likers.length,
+                  itemBuilder: (context, index) {
+                    final liker = likers[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            liker['avatar'] != null &&
+                                liker['avatar'].toString().isNotEmpty
+                            ? NetworkImage(liker['avatar'])
+                            : null,
+                        child:
+                            liker['avatar'] == null ||
+                                liker['avatar'].toString().isEmpty
+                            ? const Icon(Icons.person, color: Colors.white)
+                            : null,
+                      ),
+                      title: Text(
+                        liker['name'] ?? 'User',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COMMENT BUTTON WIDGET
+// ═══════════════════════════════════════════════════════════════
+class _CommentButton extends StatelessWidget {
+  final double size;
+  final String postId;
+
+  const _CommentButton({required this.postId, this.size = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<PostProvider>();
+    final comments = provider.getComments(postId);
+    final commentCount = comments.length;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(Icons.chat, size: size),
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) =>
+                  CommentsBottomSheet(postId: postId, isMock: false),
+            );
+          },
+        ),
+        if (commentCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Text(
+              '$commentCount',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+      ],
     );
   }
 }

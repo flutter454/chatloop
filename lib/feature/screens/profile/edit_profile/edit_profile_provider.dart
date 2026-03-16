@@ -25,12 +25,11 @@ class EditProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Removed _uploadImage method as we are saving locally
-
   Future<bool> saveProfile({
     required BuildContext context,
     required String fullName,
     required String username,
+    required String bio,
     required Map<String, String> userData,
   }) async {
     _isUploading = true;
@@ -45,35 +44,24 @@ class EditProfileProvider extends ChangeNotifier {
         final userId = supabase.auth.currentUser?.id;
 
         if (userId != null) {
-          final filePath = '$userId/profile.jpg'; // Fixed path for upsert
+          final filePath = '$userId/profile.jpg';
 
-          await supabase.storage
-              .from('avatars')
-              .upload(
-                filePath,
-                _imageFile!,
-                fileOptions: const FileOptions(
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
+          await supabase.storage.from('avatars').upload(filePath, _imageFile!,
+              fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
 
-          // Use signed URL
-          // Expiry set to 1 year (365 days)
           final String signedUrl = await supabase.storage
               .from('avatars')
               .createSignedUrl(filePath, 60 * 60 * 24 * 365);
 
-          // Append timestamp to force UI refresh since path is constant
           imageUrl = '$signedUrl&t=${DateTime.now().millisecondsSinceEpoch}';
-          debugPrint('Image uploaded to Supabase (Upsert): $imageUrl');
+          debugPrint('Image uploaded to Supabase: $imageUrl');
         }
       } catch (e) {
         debugPrint('Error uploading image: $e');
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to upload image: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to upload image: $e')),
+          );
         }
         _isUploading = false;
         notifyListeners();
@@ -84,34 +72,38 @@ class EditProfileProvider extends ChangeNotifier {
     // 2. Save Text Data & URL to SharedPreferences
     await PreferenceService.saveString('fullName', fullName);
     await PreferenceService.saveString('username', username);
+    await PreferenceService.saveString('bio', bio);
     if (imageUrl != null) {
       await PreferenceService.saveString('photoUrl', imageUrl);
       userData['photoUrl'] = imageUrl;
     }
+    
+    // Also update the map passed in
+    userData['fullName'] = fullName;
+    userData['name'] = fullName;
+    userData['username'] = username;
+    userData['bio'] = bio;
 
     // 3. Update Supabase Auth Metadata & Stories Table
     try {
       final updateAttrs = UserAttributes(
         data: {
           'full_name': fullName,
-          'username': username, // Also sync username
+          'username': username,
+          'bio': bio,
           if (imageUrl != null) 'avatar_url': imageUrl,
-          if (imageUrl != null) 'photoUrl': imageUrl, // Redundant but safe
+          if (imageUrl != null) 'photoUrl': imageUrl,
         },
       );
       final supabase = Supabase.instance.client;
       await supabase.auth.updateUser(updateAttrs);
 
-      // Sync changes to 'stories' table so old stories update immediately
       final userId = supabase.auth.currentUser?.id;
       if (userId != null) {
-        await supabase
-            .from('stories')
-            .update({
-              'user_name': fullName, // or username depending on pref
-              if (imageUrl != null) 'user_photo': imageUrl,
-            })
-            .eq('user_id', userId);
+        await supabase.from('stories').update({
+          'user_name': fullName,
+          if (imageUrl != null) 'user_photo': imageUrl,
+        }).eq('user_id', userId);
         debugPrint('Synced profile changes to stories table ✅');
       }
     } catch (e) {
@@ -123,9 +115,7 @@ class EditProfileProvider extends ChangeNotifier {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated and old photos cleaned up!'),
-        ),
+        const SnackBar(content: Text('Profile updated successfully!')),
       );
       return true;
     }

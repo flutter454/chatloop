@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
-
-import '../story/story_provider.dart';
+import 'package:chatloop/core/models/story_model.dart';
 
 class StoryViewProvider extends ChangeNotifier {
   List<StoryData> _stories = [];
@@ -22,6 +21,7 @@ class StoryViewProvider extends ChangeNotifier {
   bool _hasError = false;
   bool _isDisposed = false;
   bool _isPaused = false;
+  bool _isHighlight = false;
 
   // Getters
   int get currentIndex => _currentIndex;
@@ -31,10 +31,12 @@ class StoryViewProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   bool get hasError => _hasError;
   double get progress => _progress;
+  bool get isHighlight => _isHighlight;
 
-  void init(List<StoryData> stories, int initialIndex) {
+  void init(List<StoryData> stories, int initialIndex, {bool isHighlight = false}) {
     _stories = stories;
     _currentIndex = initialIndex;
+    _isHighlight = isHighlight;
     _loadStory();
   }
 

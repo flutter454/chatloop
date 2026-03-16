@@ -2,7 +2,7 @@ import 'package:chatloop/core/models/userdata_profile.dart';
 import 'package:chatloop/feature/screens/chat/chat_screen.dart';
 import 'package:chatloop/feature/screens/home/home_page/home_screen.dart';
 import 'package:chatloop/feature/screens/home/search/search_screen.dart';
-import 'package:chatloop/feature/screens/matches/matches_screen.dart';
+import 'package:chatloop/feature/screens/reels/reels_screen.dart';
 import 'package:chatloop/feature/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -34,7 +34,7 @@ class _DashboardState extends State<Dashboard> {
     final List<Widget> pages = [
       const HomeScreen(),
       const SearchScreen(),
-      const MatchesScreen(),
+      const ReelsScreen(),
       const ChatScreen(),
       ProfileScreen(userData: widget.userData),
     ];

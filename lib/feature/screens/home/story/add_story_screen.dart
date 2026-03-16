@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 
 import 'music_widgets/music_provider.dart';
 import 'music_widgets/music_selection_sheet.dart';
+import 'package:chatloop/core/models/story_model.dart';
 import 'story_editor_provider.dart';
 import 'story_provider.dart';
 

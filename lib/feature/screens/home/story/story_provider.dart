@@ -10,89 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
-enum StoryMediaType { image, video }
-
-class StoryData {
-  final String userId;
-  final File? file;
-  final StoryMediaType type;
-  final DateTime timestamp;
-  final String userName;
-  final String? caption;
-  final String? thumbnailPath;
-  final String? overlayText;
-  final double? overlayX;
-  final double? overlayY;
-  final String? musicName;
-  final String? musicUrl;
-  final String? musicCover;
-  final String? mediaUrl;
-  final String? userPhoto;
-  final String? thumbnailUrl;
-
-  StoryData({
-    this.userId = '',
-    this.file,
-    required this.type,
-    required this.timestamp,
-    required this.userName,
-    this.caption,
-    this.thumbnailPath,
-    this.overlayText,
-    this.overlayX,
-    this.overlayY,
-    this.musicName,
-    this.musicUrl,
-    this.musicCover,
-    this.mediaUrl,
-    this.userPhoto,
-    this.thumbnailUrl,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'path': file?.path ?? '',
-      'type': type.index,
-      'timestamp': timestamp.toIso8601String(),
-      'userName': userName,
-      'caption': caption,
-      'thumbnailPath': thumbnailPath,
-      'overlayText': overlayText,
-      'overlayX': overlayX,
-      'overlayY': overlayY,
-      'musicName': musicName,
-      'musicUrl': musicUrl,
-      'musicCover': musicCover,
-      'mediaUrl': mediaUrl,
-      'userPhoto': userPhoto,
-      'thumbnailUrl': thumbnailUrl,
-    };
-  }
-
-  factory StoryData.fromMap(Map<String, dynamic> map) {
-    return StoryData(
-      userId: map['userId'] ?? '',
-      file: (map['path'] != null && map['path'].isNotEmpty)
-          ? File(map['path'])
-          : null,
-      type: StoryMediaType.values[map['type']],
-      timestamp: DateTime.parse(map['timestamp']),
-      userName: map['userName'] ?? 'Your Story',
-      caption: map['caption'],
-      thumbnailPath: map['thumbnailPath'],
-      overlayText: map['overlayText'],
-      overlayX: map['overlayX'],
-      overlayY: map['overlayY'],
-      musicName: map['musicName'],
-      musicUrl: map['musicUrl'],
-      musicCover: map['musicCover'],
-      mediaUrl: map['mediaUrl'],
-      userPhoto: map['userPhoto'],
-      thumbnailUrl: map['thumbnailUrl'],
-    );
-  }
-}
+import 'package:chatloop/core/models/story_model.dart';
 
 class StoryProvider extends ChangeNotifier {
   final ImagePicker _picker = ImagePicker();
@@ -488,6 +406,104 @@ class StoryProvider extends ChangeNotifier {
       // If upload fails, we still have the local story which is fine
     }
   }
+
+  Future<List<StoryData>> fetchAllMyStories() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final currentUserId =
+          supabase.auth.currentUser?.id ??
+          await PreferenceService.getString('userId') ??
+          '';
+
+      if (currentUserId.isEmpty) return [];
+
+      // Fetch all stories for the current user (no expiry filter)
+      final response = await supabase
+          .from('stories')
+          .select()
+          .eq('user_id', currentUserId)
+          .order('created_at', ascending: false);
+
+      final List<dynamic> data = response;
+      final List<StoryData> allStories = [];
+
+      for (var item in data) {
+        try {
+          // Regenerate fresh signed URLs so thumbnails always load
+          final String? freshMediaUrl = await _refreshSignedUrl(
+            supabase,
+            item['media_url'],
+            'stories',
+          );
+          final String? freshThumbUrl = await _refreshSignedUrl(
+            supabase,
+            item['thumbnail_url'],
+            'stories',
+          );
+
+          final story = StoryData(
+            userId: item['user_id'] ?? '',
+            userName: item['user_name'] ?? 'Unknown',
+            file: null,
+            type: item['media_type'] == 'video'
+                ? StoryMediaType.video
+                : StoryMediaType.image,
+            timestamp: DateTime.parse(item['created_at']).toLocal(),
+            mediaUrl: freshMediaUrl ?? item['media_url'],
+            userPhoto: item['user_photo'],
+            caption: item['caption'],
+            musicName: item['music_name'],
+            musicUrl: item['music_url'],
+            musicCover: item['music_cover'],
+            overlayText: item['overlay_text'],
+            overlayX: item['overlay_x'] != null
+                ? (item['overlay_x'] as num).toDouble()
+                : null,
+            overlayY: item['overlay_y'] != null
+                ? (item['overlay_y'] as num).toDouble()
+                : null,
+            thumbnailUrl: freshThumbUrl ?? item['thumbnail_url'],
+          );
+          allStories.add(story);
+        } catch (e) {
+          debugPrint('Error parsing story item: $e');
+        }
+      }
+      return allStories;
+    } catch (e) {
+      debugPrint('Error fetching all my stories: $e');
+      return [];
+    }
+  }
+
+  /// Extracts the storage path from a Supabase signed URL and generates a fresh one.
+  Future<String?> _refreshSignedUrl(
+    SupabaseClient supabase,
+    dynamic storedUrl,
+    String bucket,
+  ) async {
+    if (storedUrl == null || storedUrl.toString().isEmpty) return null;
+    try {
+      final uri = Uri.parse(storedUrl.toString());
+      // Supabase signed URL path format:
+      // /storage/v1/object/sign/<bucket>/<path...>
+      final segments = uri.pathSegments;
+      final bucketIndex = segments.indexOf(bucket);
+      if (bucketIndex == -1 || bucketIndex >= segments.length - 1) {
+        return storedUrl.toString();
+      }
+      final filePath = segments.sublist(bucketIndex + 1).join('/');
+      // Generate a fresh 1-year signed URL
+      final freshUrl = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+      return freshUrl;
+    } catch (e) {
+      debugPrint('Could not refresh signed URL: $e');
+      return storedUrl.toString(); // Fall back to old URL
+    }
+  }
+
 
   Future<void> fetchStories() async {
     try {

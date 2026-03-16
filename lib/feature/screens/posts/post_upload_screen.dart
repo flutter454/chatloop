@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../login_main/dashboard/dashboard_provider.dart';
 import 'post_provider.dart';
 
 class UploadState extends ChangeNotifier {
@@ -55,6 +56,7 @@ class _PostUploadScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final uploadState = context.watch<UploadState>();
     final postProvider = context.watch<PostProvider>();
+    final dashboardProvider = context.watch<DashboardProvider>();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -209,6 +211,8 @@ class _PostUploadScreenBody extends StatelessWidget {
                                     file: rootWidget.file,
                                     caption: uploadState.captionController.text,
                                     isVideo: rootWidget.isVideo,
+                                    userName: dashboardProvider.userName,
+                                    userAvatarUrl: dashboardProvider.userPhotoUrl,
                                     onSuccess: () {
                                       // Refresh the feed
                                       postProvider.fetchPosts(forceRefresh: true);

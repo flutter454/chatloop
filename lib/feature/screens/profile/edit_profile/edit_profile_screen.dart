@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:chatloop/feature/screens/profile/edit_profile_provider.dart';
+import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
+import 'package:chatloop/feature/screens/profile/edit_profile/edit_profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,16 +17,20 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _fullNameController;
   late TextEditingController _usernameController;
+  late TextEditingController _bioController;
   final TextEditingController _emailController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fullNameController = TextEditingController(
-      text: widget.userData['fullName'],
+      text: widget.userData['fullName'] ?? widget.userData['name'],
     );
     _usernameController = TextEditingController(
       text: widget.userData['username'],
+    );
+    _bioController = TextEditingController(
+      text: widget.userData['bio'],
     );
     _emailController.text = widget.userData['email'] ?? '';
   }
@@ -34,6 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _usernameController.dispose();
+    _bioController.dispose();
     _emailController.dispose();
     super.dispose();
   }
@@ -83,9 +89,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         context: context,
                         fullName: _fullNameController.text,
                         username: _usernameController.text,
+                        bio: _bioController.text,
                         userData: widget.userData,
                       );
                       if (success && context.mounted) {
+                        context.read<DashboardProvider>().refreshUserProfile();
                         Navigator.pop(context, true);
                       }
                     },
@@ -236,6 +244,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
+                    controller: _bioController,
+                    label: 'Bio',
+                    icon: Icons.info_outline,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
                     controller: _emailController,
                     label: 'Email',
                     icon: Icons.email_outlined,
@@ -250,6 +264,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               context: context,
                               fullName: _fullNameController.text,
                               username: _usernameController.text,
+                              bio: _bioController.text,
                               userData: widget.userData,
                             );
                             if (success && context.mounted) {

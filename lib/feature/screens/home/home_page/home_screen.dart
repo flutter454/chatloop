@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // ── Placeholder posts (can remove later) ───────────
             ...homePageProvider.posts.map(
-              (post) => HomeWidgets.buildPost(post),
+              (post) => HomeWidgets.buildPost(context, post),
             ),
 
             const SizedBox(height: 100), // Bottom padding for navigation bar

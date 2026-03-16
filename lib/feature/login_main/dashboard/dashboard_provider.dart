@@ -10,7 +10,11 @@ class DashboardProvider extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   String get userEmail => _userProfile?.email ?? '';
   String get userPhotoUrl => _userProfile?.photoUrl ?? '';
-  String get userName => _userProfile?.fullName ?? _userProfile?.username ?? '';
+  String get userName =>
+      (_userProfile?.fullName != null && _userProfile!.fullName.isNotEmpty)
+          ? _userProfile!.fullName
+          : (_userProfile?.username ?? '');
+  String get userBio => _userProfile?.bio ?? '';
 
   Future<void> setSelectedIndex(int index) async {
     if (_selectedIndex != index) {
@@ -30,6 +34,7 @@ class DashboardProvider extends ChangeNotifier {
     final username = PreferenceService.getString('username') ?? '';
     final photoUrl = PreferenceService.getString('photoUrl') ?? '';
     final email = PreferenceService.getString('email') ?? '';
+    final bio = PreferenceService.getString('bio') ?? '';
 
     // Preserve existing fields if available, else load from prefs or default
     final dob = _userProfile?.dob ?? PreferenceService.getString('dob') ?? '';
@@ -51,6 +56,7 @@ class DashboardProvider extends ChangeNotifier {
       gender: gender,
       instagram: instagram,
       youtube: youtube,
+      bio: bio,
     );
     notifyListeners();
   }

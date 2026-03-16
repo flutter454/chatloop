@@ -45,9 +45,9 @@ class CustomBottomBar extends StatelessWidget {
             ),
             _NavItem(
               index: 2,
-              icon: Icons.favorite_outline,
-              activeIcon: Icons.favorite_rounded,
-              label: 'Matches',
+              icon: Icons.play_circle_outline,
+              activeIcon: Icons.play_circle_fill,
+              label: 'Reels',
               provider: provider,
             ),
             _NavItem(

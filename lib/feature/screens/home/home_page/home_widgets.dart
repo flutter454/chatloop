@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:chatloop/core/models/story_model.dart';
 import 'package:chatloop/core/models/post_model.dart';
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../posts/media_picker_screen.dart';
+import '../../posts/post_provider.dart';
+import '../../posts/comments_bottom_sheet.dart';
 import '../story/story_provider.dart';
+import 'home_page_provider.dart';
 import 'story_view_provider.dart';
 
 class HomeWidgets {
@@ -69,7 +73,7 @@ class HomeWidgets {
             child: GestureDetector(
               onTap: () {
                 if (storyProvider.myStories.isNotEmpty) {
-                  _showStoryView(context, storyProvider.myStories);
+                  showStoryView(context, storyProvider.myStories);
                 } else {
                   _handleStoryCreation(context);
                 }
@@ -216,7 +220,7 @@ class HomeWidgets {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: GestureDetector(
-                onTap: () => _showStoryView(context, stories),
+                onTap: () => showStoryView(context, stories),
                 child: Column(
                   children: [
                     Container(
@@ -322,10 +326,11 @@ class HomeWidgets {
     );
   }
 
-  static void _showStoryView(
+  static void showStoryView(
     BuildContext context,
     List<StoryData> stories, {
     int initialIndex = 0,
+    bool isHighlight = false,
   }) {
     showModalBottomSheet(
       context: context,
@@ -333,13 +338,13 @@ class HomeWidgets {
       backgroundColor: Colors.black,
       useSafeArea: true,
       builder: (context) => ChangeNotifierProvider(
-        create: (_) => StoryViewProvider()..init(stories, initialIndex),
+        create: (_) => StoryViewProvider()..init(stories, initialIndex, isHighlight: isHighlight),
         child: const StoryViewer(),
       ),
     );
   }
 
-  static Widget buildPost(Map<String, String> post) {
+  static Widget buildPost(BuildContext context, Map<String, String> post) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -363,9 +368,9 @@ class HomeWidgets {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              const Icon(Icons.favorite_border_rounded, size: 28),
+              _LikeIcon(id: post['image']!, isMock: true, size: 28),
               const SizedBox(width: 16),
-              const Icon(Icons.mode_comment_outlined, size: 26),
+              _CommentIcon(id: post['image']!, isMock: true, size: 26),
               const SizedBox(width: 16),
               const Icon(Icons.send_outlined, size: 26),
               const Spacer(),
@@ -404,10 +409,16 @@ class HomeWidgets {
   //  REAL SUPABASE POST WIDGET
   // ═══════════════════════════════════════════════════════════════
   static Widget buildSupabasePost(BuildContext context, PostModel post) {
+    // Only use the post data so it reflects the actual creator of the post
+    final displayAvatar = post.userAvatarUrl;
+    final displayUserName = (post.userName != null && post.userName!.isNotEmpty)
+              ? post.userName!
+              : 'Unknown User';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Header (avatar + username) ──────────────────────────
+        // ── 1. Header (avatar + username) ──────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
@@ -415,24 +426,27 @@ class HomeWidgets {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: post.userAvatarUrl != null
-                    ? NetworkImage(post.userAvatarUrl!)
+                backgroundImage: displayAvatar != null && displayAvatar.isNotEmpty
+                    ? NetworkImage(displayAvatar)
                     : null,
-                child: post.userAvatarUrl == null
+                child: displayAvatar == null || displayAvatar.isEmpty
                     ? const Icon(Icons.person, color: Colors.white, size: 20)
                     : null,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  post.userName ?? 'User',
+                  displayUserName,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),
               ),
-              const Icon(Icons.more_horiz, size: 20),
+              IconButton(
+                icon: const Icon(Icons.more_horiz, size: 20),
+                onPressed: () => _showPostOptions(context, post),
+              ),
             ],
           ),
         ),
@@ -487,9 +501,9 @@ class HomeWidgets {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
-              const Icon(Icons.favorite_border_rounded, size: 28),
+              _LikeIcon(id: post.id.toString(), isMock: false, size: 28),
               const SizedBox(width: 16),
-              const Icon(Icons.mode_comment_outlined, size: 26),
+              _CommentIcon(id: post.id.toString(), isMock: false, size: 26),
               const SizedBox(width: 16),
               const Icon(Icons.send_outlined, size: 26),
               const Spacer(),
@@ -498,7 +512,7 @@ class HomeWidgets {
           ),
         ),
 
-        // ── Caption ─────────────────────────────────────────────
+        // ── 3. Caption ─────────────────────────────────────────────
         if (post.caption.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -507,7 +521,7 @@ class HomeWidgets {
                 style: const TextStyle(color: Colors.black, fontSize: 14),
                 children: [
                   TextSpan(
-                    text: '${post.userName ?? 'User'} ',
+                    text: '$displayUserName ',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   TextSpan(text: post.caption),
@@ -543,6 +557,63 @@ class HomeWidgets {
     } else {
       return 'Just now';
     }
+  }
+
+  static void _showPostOptions(BuildContext context, PostModel post) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (currentUserId == post.userId)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  // Capture the provider and scaffold messenger outside the async gap
+                  final provider = context.read<PostProvider>();
+                  final navigator = Navigator.of(sheetCtx);
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                  
+                  // Pop the bottom sheet first
+                  navigator.pop();
+                  
+                  try {
+                    await provider.deletePost(post);
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Post deleted successfully'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  } catch (e) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to delete post: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share'),
+              onTap: () => Navigator.pop(sheetCtx),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(sheetCtx),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -935,35 +1006,36 @@ class StoryViewer extends StatelessWidget {
                 ),
 
               // Share and Menu Options (Bottom Right)
-              Positioned(
-                bottom: 20,
-                right: 16,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Share Button
-                    IconButton(
-                      icon: const Icon(
-                        Icons.near_me,
-                        color: Colors.white,
-                        size: 30,
+              if (!provider.isHighlight)
+                Positioned(
+                  bottom: 20,
+                  right: 16,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Share Button
+                      IconButton(
+                        icon: const Icon(
+                          Icons.near_me,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: () =>
+                            _shareStory(context, provider, currentStory),
                       ),
-                      onPressed: () =>
-                          _shareStory(context, provider, currentStory),
-                    ),
-                    const SizedBox(width: 8),
-                    // Three Dots Menu
-                    IconButton(
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                        size: 30,
+                      const SizedBox(width: 8),
+                      // Three Dots Menu
+                      IconButton(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: () => _showDeleteOption(context, provider),
                       ),
-                      onPressed: () => _showDeleteOption(context, provider),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
               // Top Controls
               Positioned(
@@ -972,115 +1044,110 @@ class StoryViewer extends StatelessWidget {
                 right: 10,
                 child: Row(
                   children: [
-                    // User Info
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.grey[300],
-                      child: ClipOval(
-                        child:
-                            (currentStory.userPhoto != null &&
-                                currentStory.userPhoto!.isNotEmpty)
-                            ? Image.network(
-                                currentStory.userPhoto!,
-                                width: 36,
-                                height: 36,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    size: 24,
-                                    color: Colors.grey,
-                                  );
-                                },
-                              )
-                            : (userData.userProfile?.photoUrl != null &&
-                                  userData.userProfile!.photoUrl.isNotEmpty &&
-                                  currentStory.userId ==
-                                      Supabase
-                                          .instance
-                                          .client
-                                          .auth
-                                          .currentUser
-                                          ?.id)
-                            ? (userData.userProfile!.photoUrl.startsWith('http')
-                                  ? Image.network(
-                                      userData.userProfile!.photoUrl,
-                                      width: 36,
-                                      height: 36,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.file(
-                                      File(userData.userProfile!.photoUrl),
-                                      width: 36,
-                                      height: 36,
-                                      fit: BoxFit.cover,
-                                    ))
-                            : Image.network(
-                                'https://i.pravatar.cc/150?u=me',
-                                width: 36,
-                                height: 36,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    size: 24,
-                                    color: Colors.grey,
-                                  );
-                                },
-                              ),
+                    if (!provider.isHighlight) ...[
+                      // User Info
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.grey[300],
+                        child: ClipOval(
+                          child:
+                              (currentStory.userPhoto != null &&
+                                  currentStory.userPhoto!.isNotEmpty)
+                              ? Image.network(
+                                  currentStory.userPhoto!,
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.person,
+                                      size: 24,
+                                      color: Colors.grey,
+                                    );
+                                  },
+                                )
+                              : (userData.userProfile?.photoUrl != null &&
+                                    userData.userProfile!.photoUrl.isNotEmpty &&
+                                    currentStory.userId ==
+                                        Supabase
+                                            .instance
+                                            .client
+                                            .auth
+                                            .currentUser
+                                            ?.id)
+                              ? (userData.userProfile!.photoUrl.startsWith('http')
+                                    ? Image.network(
+                                        userData.userProfile!.photoUrl,
+                                        width: 36,
+                                        height: 36,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        File(userData.userProfile!.photoUrl),
+                                        width: 36,
+                                        height: 36,
+                                        fit: BoxFit.cover,
+                                      ))
+                              : Image.network(
+                                  'https://i.pravatar.cc/150?u=me',
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.person,
+                                      size: 24,
+                                      color: Colors.grey,
+                                    );
+                                  },
+                                ),
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                currentStory.userName.isNotEmpty
-                                    ? currentStory.userName
-                                    : 'Your Story',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  currentStory.userName.isNotEmpty
+                                      ? currentStory.userName
+                                      : 'Your Story',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                () {
-                                  final diff = DateTime.now().difference(
-                                    currentStory.timestamp,
-                                  );
-                                  if (diff.inMinutes < 60) {
-                                    return '${diff.inMinutes}m';
-                                  } else {
-                                    return '${diff.inHours}h';
-                                  }
-                                }(),
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                const SizedBox(width: 8),
+                                Text(
+                                  () {
+                                    final diff = DateTime.now().difference(
+                                      currentStory.timestamp,
+                                    );
+                                    if (diff.inMinutes < 60) {
+                                      return '${diff.inMinutes}m';
+                                    } else {
+                                      return '${diff.inHours}h';
+                                    }
+                                  }(),
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    // Three Dots Menu - Removed from Top
-                    // IconButton(
-                    //   icon: const Icon(
-                    //     Icons.more_vert,
-                    //     color: Colors.white,
-                    //     size: 28,
-                    //   ),
-                    //   onPressed: () => _showDeleteOption(context),
-                    // ),
-                    // Close Button (Right side, or maybe just swipe down? Most stories have close at top right or swipe)
+                    ] else
+                      const Spacer(),
+
+                    // Close Button
                     IconButton(
                       icon: const Icon(
                         Icons.close,
@@ -1270,6 +1337,191 @@ class _SupabaseVideoWidgetState extends State<_SupabaseVideoWidget> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LIKE ICON WIDGET
+// ═══════════════════════════════════════════════════════════════
+class _LikeIcon extends StatelessWidget {
+  final double size;
+  final String id;
+  final bool isMock;
+
+  const _LikeIcon({required this.id, this.isMock = false, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLiked = isMock
+        ? context.watch<HomePageProvider>().isLiked(id)
+        : context.watch<PostProvider>().isLiked(id);
+
+    final likers = isMock
+        ? context.watch<HomePageProvider>().getLikers(id)
+        : context.watch<PostProvider>().getLikers(id);
+
+    final likeCount = likers.length;
+
+    final dashboard = context.watch<DashboardProvider>();
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? 'me';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            if (isMock) {
+              context.read<HomePageProvider>().toggleLike(
+                id,
+                currentUserId: currentUserId,
+                userName: dashboard.userName.isNotEmpty
+                    ? dashboard.userName
+                    : 'Me',
+                avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                    ? dashboard.userPhotoUrl
+                    : 'https://i.pravatar.cc/150?u=me',
+              );
+            } else {
+              context.read<PostProvider>().toggleLike(
+                id,
+                currentUserId: currentUserId,
+                userName: dashboard.userName.isNotEmpty
+                    ? dashboard.userName
+                    : 'Me',
+                avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                    ? dashboard.userPhotoUrl
+                    : 'https://i.pravatar.cc/150?u=me',
+              );
+            }
+          },
+          child: Icon(
+            isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: isLiked ? Colors.red : null,
+            size: size,
+          ),
+        ),
+        if (likeCount > 0)
+          GestureDetector(
+            onTap: () => _showLikersBottomSheet(context, likers),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 6.0),
+              child: Text(
+                '$likeCount',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showLikersBottomSheet(
+    BuildContext context,
+    List<Map<String, dynamic>> likers,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Likes',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(height: 30),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: likers.length,
+                  itemBuilder: (context, index) {
+                    final liker = likers[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            liker['avatar'] != null &&
+                                liker['avatar'].toString().isNotEmpty
+                            ? NetworkImage(liker['avatar'])
+                            : null,
+                        child:
+                            liker['avatar'] == null ||
+                                liker['avatar'].toString().isEmpty
+                            ? const Icon(Icons.person, color: Colors.white)
+                            : null,
+                      ),
+                      title: Text(
+                        liker['name'] ?? 'User',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COMMENT ICON WIDGET
+// ═══════════════════════════════════════════════════════════════
+class _CommentIcon extends StatelessWidget {
+  final double size;
+  final String id;
+  final bool isMock;
+
+  const _CommentIcon({required this.id, this.isMock = false, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    final comments = isMock
+        ? context.watch<HomePageProvider>().getComments(id)
+        : context.watch<PostProvider>().getComments(id);
+    final commentCount = comments.length;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => CommentsBottomSheet(postId: id, isMock: isMock),
+            );
+          },
+          child: Icon(Icons.mode_comment_outlined, size: size),
+        ),
+        if (commentCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(left: 6.0),
+            child: Text(
+              '$commentCount',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+      ],
     );
   }
 }

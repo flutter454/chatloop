@@ -7,6 +7,7 @@ class UserProfile {
   final String gender;
   final String instagram;
   final String youtube;
+  final String bio;
 
   UserProfile({
     required this.fullName,
@@ -17,18 +18,20 @@ class UserProfile {
     required this.gender,
     required this.instagram,
     required this.youtube,
+    required this.bio,
   });
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
     return UserProfile(
-      fullName: map['fullName'] ?? '',
+      fullName: map['fullName'] ?? map['full_name'] ?? '',
       username: map['username'] ?? '',
       email: map['email'] ?? '',
-      photoUrl: map['photoUrl'] ?? '',
+      photoUrl: map['photoUrl'] ?? map['avatar_url'] ?? '',
       dob: map['dob'] ?? '',
       gender: map['gender'] ?? '',
       instagram: map['instagram'] ?? '',
       youtube: map['youtube'] ?? '',
+      bio: map['bio'] ?? '',
     );
   }
 
@@ -42,6 +45,7 @@ class UserProfile {
       'gender': gender,
       'instagram': instagram,
       'youtube': youtube,
+      'bio': bio,
     };
   }
 }
