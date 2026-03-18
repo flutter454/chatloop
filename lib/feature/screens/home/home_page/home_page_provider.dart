@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:chatloop/feature/screens/chat/incoming_call_screen/incoming_call_screen.dart';
+import 'package:chatloop/feature/screens/chat/video_call_screen/video_call_provider.dart';
 import 'package:chatloop/feature/screens/chat/video_call_screen/video_call_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -168,7 +170,14 @@ class HomePageProvider extends ChangeNotifier {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VideoCallScreen(channelName: call['channel_id']),
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => VideoCallProvider(),
+          child: VideoCallScreen(
+            channelName: call['channel_id'],
+            callerImage: call['caller_image'],
+            callerName: call['caller_name'],
+          ),
+        ),
       ),
     );
   }

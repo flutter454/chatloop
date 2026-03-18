@@ -1,116 +1,135 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+
+import 'video_call_provider.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String channelName;
+  final String? callerImage;
+  final String? callerName;
 
-  const VideoCallScreen({super.key, required this.channelName});
+  const VideoCallScreen({
+    super.key,
+    required this.channelName,
+    this.callerImage,
+    this.callerName,
+  });
 
   @override
   State<VideoCallScreen> createState() => _VideoCallScreenState();
 }
 
 class _VideoCallScreenState extends State<VideoCallScreen> {
-  late RtcEngine _engine;
-  int? _remoteUid;
-
-  final String appId = "f118eaa02058464a89f75be49b7aa0a4";
-
-  bool isMuted = false;
-
   @override
   void initState() {
     super.initState();
-    initAgora();
-  }
 
-  Future<void> initAgora() async {
-    await [Permission.microphone, Permission.camera].request();
-
-    _engine = createAgoraRtcEngine();
-    await _engine.initialize(RtcEngineContext(appId: appId));
-
-    _engine.registerEventHandler(
-      RtcEngineEventHandler(
-        onUserJoined: (connection, uid, elapsed) {
-          setState(() {
-            _remoteUid = uid;
-          });
-        },
-        onUserOffline: (connection, uid, reason) {
-          setState(() {
-            _remoteUid = null;
-          });
-        },
-      ),
-    );
-
-    await _engine.enableVideo();
-    await _engine.startPreview();
-
-    await _engine.joinChannel(
-      token: null ?? '',
-      channelId: widget.channelName,
-      uid: 0,
-      options: const ChannelMediaOptions(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _engine.leaveChannel();
-    _engine.release();
-    super.dispose();
-  }
-
-  void toggleMute() {
-    setState(() {
-      isMuted = !isMuted;
+    Future.microtask(() {
+      context.read<VideoCallProvider>().initAgora(widget.channelName);
     });
-    _engine.muteLocalAudioStream(isMuted);
-  }
-
-  void switchCamera() {
-    _engine.switchCamera();
-  }
-
-  void endCall() {
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<VideoCallProvider>();
+
+    /// ⏱ Format Timer
+    String formatTime(int seconds) {
+      final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+      final secs = (seconds % 60).toString().padLeft(2, '0');
+      return "$minutes:$secs";
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           /// 🔥 Remote Video
           Center(
-            child: _remoteUid != null
+            child: provider.remoteUid != null
                 ? AgoraVideoView(
                     controller: VideoViewController.remote(
-                      rtcEngine: _engine,
-                      canvas: VideoCanvas(uid: _remoteUid),
+                      rtcEngine: provider.engine,
+                      canvas: VideoCanvas(uid: provider.remoteUid),
                       connection: RtcConnection(channelId: widget.channelName),
                     ),
                   )
-                : const Text(
-                    "Waiting for user...",
-                    style: TextStyle(color: Colors.white),
+                : const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.videocam, color: Colors.white54, size: 60),
+                      SizedBox(height: 10),
+                      Text(
+                        "Waiting for user...",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ],
                   ),
           ),
 
-          /// 🔥 Local Video (small)
+          /// 🔥 Call Timer
           Positioned(
             top: 40,
+            left: 20,
+            child: Text(
+              formatTime(provider.seconds),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          /// 🔥 Top Info (Profile + Name)
+          Positioned(
+            top: 80,
+            left: 20,
+            right: 20,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundImage: widget.callerImage != null
+                      ? NetworkImage(widget.callerImage!)
+                      : null,
+                  child: widget.callerImage == null
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.callerName ?? "Unknown",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      "Video Call",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          /// 🔥 Local Video (small preview)
+          Positioned(
+            top: 140,
             right: 20,
             child: SizedBox(
               width: 120,
               height: 160,
               child: AgoraVideoView(
                 controller: VideoViewController(
-                  rtcEngine: _engine,
+                  rtcEngine: provider.engine,
                   canvas: const VideoCanvas(uid: 0),
                 ),
               ),
@@ -125,36 +144,39 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                /// Mute
+                /// 🎤 Mute
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white24,
                   child: IconButton(
                     icon: Icon(
-                      isMuted ? Icons.mic_off : Icons.mic,
+                      provider.isMuted ? Icons.mic_off : Icons.mic,
                       color: Colors.white,
                     ),
-                    onPressed: toggleMute,
+                    onPressed: provider.toggleMute,
                   ),
                 ),
 
-                /// End Call
+                /// 🔴 End Call
                 CircleAvatar(
                   radius: 35,
                   backgroundColor: Colors.red,
                   child: IconButton(
                     icon: const Icon(Icons.call_end, color: Colors.white),
-                    onPressed: endCall,
+                    onPressed: () async {
+                      await provider.endCall();
+                      Navigator.pop(context);
+                    },
                   ),
                 ),
 
-                /// Switch Camera
+                /// 🔄 Switch Camera
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white24,
                   child: IconButton(
                     icon: const Icon(Icons.cameraswitch, color: Colors.white),
-                    onPressed: switchCamera,
+                    onPressed: provider.switchCamera,
                   ),
                 ),
               ],

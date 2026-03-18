@@ -117,8 +117,20 @@ class _MessageScreenState extends State<MessageScreen>
                 ),
                 IconButton(
                   icon: const Icon(Icons.video_call),
-                  onPressed: () {
-                    // TODO: Implement video call functionality
+                  onPressed: () async {
+                    final supabase = Supabase.instance.client;
+
+                    final channelId =
+                        "call_${DateTime.now().millisecondsSinceEpoch}";
+
+                    await supabase.from('calls').insert({
+                      'caller_id': supabase.auth.currentUser!.id,
+                      'receiver_id': widget.friendId,
+                      'channel_id': channelId,
+                      'status': 'calling',
+                      'caller_name': widget.friendName,
+                      'caller_image': widget.friendPhoto,
+                    });
                   },
                 ),
                 const SizedBox(width: 8),
