@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Fetch real posts from Supabase when home screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PostProvider>().fetchPosts();
+      context.read<HomePageProvider>().listenForIncomingCalls(context);
     });
   }
 
@@ -58,10 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
             // ── Placeholder posts (can remove later) ───────────
-            ...homePageProvider.posts.map(
-              (post) => HomeWidgets.buildPost(context, post),
-            ),
-
             const SizedBox(height: 100), // Bottom padding for navigation bar
           ],
         ),

@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:chatloop/feature/screens/profile/edit_profile/edit_profile_provider.dart';
+import 'package:chatloop/feature/screens/profile/edit_profile/edit_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,11 +26,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       text: widget.userData['fullName'] ?? widget.userData['name'],
     );
     _usernameController = TextEditingController(
-      text: widget.userData['username'],
+      text: widget.userData['username'] ?? '',
     );
-    _bioController = TextEditingController(
-      text: widget.userData['bio'],
-    );
+    _bioController = TextEditingController(text: widget.userData['bio'] ?? '');
     _emailController.text = widget.userData['email'] ?? '';
   }
 
@@ -104,199 +101,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFFFF4081),
-                            width: 2,
-                          ),
-                        ),
-                        child: provider.isUploading
-                            ? const CircularProgressIndicator(
-                                color: Color(0xFFFF4081),
-                              )
-                            : ClipOval(
-                                child: Container(
-                                  width: 100,
-                                  height: 100,
-                                  color: const Color(0xFFFFEBF2),
-                                  child: provider.imageFile != null
-                                      ? Image.file(
-                                          provider.imageFile!,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : (widget.userData['photoUrl'] != null &&
-                                                widget
-                                                    .userData['photoUrl']!
-                                                    .isNotEmpty
-                                            ? (widget.userData['photoUrl']!
-                                                      .startsWith('http')
-                                                  ? Image.network(
-                                                      widget
-                                                          .userData['photoUrl']!,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (context, error, stackTrace) {
-                                                        // Fallback to initial if network error
-                                                        return Center(
-                                                          child: Text(
-                                                            widget.userData['email'] !=
-                                                                    null
-                                                                ? widget
-                                                                      .userData['email']![0]
-                                                                      .toUpperCase()
-                                                                : '?',
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 40,
-                                                                  color: Color(
-                                                                    0xFFFF4081,
-                                                                  ),
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                ),
-                                                          ),
-                                                        );
-                                                      },
-                                                    )
-                                                  : Image.file(
-                                                      File(
-                                                        widget
-                                                            .userData['photoUrl']!,
-                                                      ),
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (context, error, stackTrace) {
-                                                        return Center(
-                                                          child: Text(
-                                                            widget.userData['email'] !=
-                                                                    null
-                                                                ? widget
-                                                                      .userData['email']![0]
-                                                                      .toUpperCase()
-                                                                : '?',
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 40,
-                                                                  color: Color(
-                                                                    0xFFFF4081,
-                                                                  ),
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                ),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ))
-                                            : Center(
-                                                child: Text(
-                                                  widget.userData['email'] !=
-                                                          null
-                                                      ? widget
-                                                            .userData['email']![0]
-                                                            .toUpperCase()
-                                                      : '?',
-                                                  style: const TextStyle(
-                                                    fontSize: 40,
-                                                    color: Color(0xFFFF4081),
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              )),
-                                ),
-                              ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () => provider.pickImage(),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFF4081),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  ProfileImagePicker(
+                    isUploading: provider.isUploading,
+                    imageFile: provider.imageFile,
+                    photoUrl: widget.userData['photoUrl'],
+                    email: widget.userData['email'],
+                    onPickImage: () => provider.pickImage(),
                   ),
                   const SizedBox(height: 32),
-                  _buildTextField(
+                  EditTextField(
                     controller: _fullNameController,
                     label: 'Full Name',
                     icon: Icons.person_outline,
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField(
+                  EditTextField(
                     controller: _usernameController,
                     label: 'Username',
                     icon: Icons.alternate_email,
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField(
+                  EditTextField(
                     controller: _bioController,
                     label: 'Bio',
                     icon: Icons.info_outline,
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField(
+                  EditTextField(
                     controller: _emailController,
                     label: 'Email',
                     icon: Icons.email_outlined,
                     readOnly: true,
                   ),
                   const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: provider.isUploading
-                        ? null
-                        : () async {
-                            final success = await provider.saveProfile(
-                              context: context,
-                              fullName: _fullNameController.text,
-                              username: _usernameController.text,
-                              bio: _bioController.text,
-                              userData: widget.userData,
-                            );
-                            if (success && context.mounted) {
-                              Navigator.pop(context, true);
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF4081),
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                      shadowColor: const Color(0xFFFF4081).withOpacity(0.4),
-                    ),
-                    child: provider.isUploading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Save Changes',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  EditSaveButton(
+                    isUploading: provider.isUploading,
+                    onPressed: () async {
+                      final success = await provider.saveProfile(
+                        context: context,
+                        fullName: _fullNameController.text,
+                        username: _usernameController.text,
+                        bio: _bioController.text,
+                        userData: widget.userData,
+                      );
+                      if (success && context.mounted) {
+                        Navigator.pop(context, true);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -304,65 +155,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool readOnly = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: readOnly ? Colors.grey[100] : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            readOnly: readOnly,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF2D2D2D),
-            ),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: const Color(0xFFFF4081)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -84,4 +84,34 @@ class PostModel {
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  Map<String, dynamic> toJsonMap() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'storage_path': storagePath,
+      'media_type': mediaType,
+      'caption': caption,
+      'created_at': createdAt.toIso8601String(),
+      'signedUrl': signedUrl,
+      'userName': userName,
+      'userAvatarUrl': userAvatarUrl,
+    };
+  }
+
+  factory PostModel.fromJsonMap(Map<String, dynamic> map) {
+    return PostModel(
+      id: map['id'] is int ? map['id'] as int : int.parse(map['id'].toString()),
+      userId: map['user_id'] as String,
+      storagePath: map['storage_path'] ?? '',
+      mediaType: map['media_type'] as String? ?? 'image',
+      caption: (map['caption'] as String?) ?? '',
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : DateTime.now(),
+      signedUrl: map['signedUrl'] as String?,
+      userName: map['userName'] as String?,
+      userAvatarUrl: map['userAvatarUrl'] as String?,
+    );
+  }
 }

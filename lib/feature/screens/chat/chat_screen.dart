@@ -16,18 +16,18 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => NoteProvider()),
-      ],
-      child: const _ChatScreenContent(),
-    );
+    return const _ChatScreenContent();
   }
 }
 
-class _ChatScreenContent extends StatelessWidget {
+class _ChatScreenContent extends StatefulWidget {
   const _ChatScreenContent();
+
+  @override
+  State<_ChatScreenContent> createState() => _ChatScreenContentState();
+}
+
+class _ChatScreenContentState extends State<_ChatScreenContent> {
 
   String _cleanUrl(String? url) {
     if (url == null || url.isEmpty) return 'https://i.pravatar.cc/150';

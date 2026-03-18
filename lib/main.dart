@@ -7,6 +7,8 @@ import 'package:chatloop/feature/screens/posts/post_provider.dart';
 import 'package:chatloop/feature/screens/profile/highlights/highlights_service.dart';
 import 'package:chatloop/feature/screens/profile/profile_provider.dart';
 import 'package:chatloop/feature/screens/reels/reels_provider.dart';
+import 'package:chatloop/feature/screens/chat/chat_provider.dart';
+import 'package:chatloop/feature/screens/chat/chat_note_screen/note_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,6 +39,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReelsProvider()),
         ChangeNotifierProvider(create: (_) => HighlightsNotifier()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => NoteProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

@@ -179,4 +179,19 @@ class MessageScreenProvider with ChangeNotifier {
     _messagesSubscription?.cancel();
     super.dispose();
   }
+
+  Future<void> startCall(String receiverId) async {
+    try {
+      final channelId = "call_${DateTime.now().millisecondsSinceEpoch}";
+
+      await Supabase.instance.client.from('calls').insert({
+        'caller_id': Supabase.instance.client.auth.currentUser!.id,
+        'receiver_id': receiverId,
+        'channel_id': channelId,
+        'status': 'calling',
+      });
+    } catch (error) {
+      print('$error');
+    }
+  }
 }

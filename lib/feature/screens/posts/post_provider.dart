@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:chatloop/core/services/sharedpreference.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -410,15 +412,43 @@ class PostProvider extends ChangeNotifier {
   /// Pass [forceRefresh: true] to bypass the cache (used by pull-to-refresh,
   /// upload success and delete).
   Future<void> fetchPosts({bool forceRefresh = false}) async {
+    final String cacheKey = 'cached_posts';
+
+    if (!_hasFetchedOnce && !forceRefresh) {
+      if (_posts.isEmpty) {
+        try {
+          final cachedStr = PreferenceService.getString(cacheKey);
+          if (cachedStr != null) {
+            final List<dynamic> decoded = jsonDecode(cachedStr);
+            _posts = decoded.map((e) => PostModel.fromJsonMap(Map<String, dynamic>.from(e))).toList();
+            _isFeedLoading = false;
+            _hasFetchedOnce = true;
+            notifyListeners();
+            debugPrint('📦 Instantly loaded ${_posts.length} posts from cache');
+          } else {
+             _isFeedLoading = true;
+             notifyListeners();
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to load cached posts: $e');
+          _isFeedLoading = true;
+          notifyListeners();
+        }
+      }
+    }
+
     // ── Use cache if we already have data and caller didn't ask to refresh ──
-    if (!forceRefresh && _hasFetchedOnce && _posts.isNotEmpty) {
-      debugPrint('📦 Using cached posts (${_posts.length} items)');
-      return;
+    if (!forceRefresh && _hasFetchedOnce && _posts.isNotEmpty && !_isFeedLoading) {
+      // Allow background updating but dont block UI
+      debugPrint('📦 Using cached posts and fetching in background');
     }
 
     try {
-      _isFeedLoading = true;
       _feedError = null;
+      // We do not set _isFeedLoading to true if we already have cached points to prevent UI flashing
+      if (_posts.isEmpty) {
+        _isFeedLoading = true;
+      }
       notifyListeners();
 
       // Try fetching with profile join first, fallback to plain query
@@ -489,6 +519,15 @@ class PostProvider extends ChangeNotifier {
       _posts = fetchedPosts;
       _hasFetchedOnce = true;
       _isFeedLoading = false;
+
+      // Save to cache memory to show up quickly immediately next time
+      try {
+        final List<Map<String, dynamic>> cacheData = _posts.map((p) => p.toJsonMap()).toList();
+        PreferenceService.saveString(cacheKey, jsonEncode(cacheData));
+      } catch (e) {
+         debugPrint('⚠️ Error saving cached posts: $e');
+      }
+
       notifyListeners();
 
       debugPrint(

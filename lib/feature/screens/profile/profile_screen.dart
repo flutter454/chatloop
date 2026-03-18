@@ -12,10 +12,113 @@ import 'package:chatloop/feature/screens/profile/story_archive/story_archive_scr
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final Map<String, String> userData;
 
   const ProfileScreen({super.key, required this.userData});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().fetchProfileBio();
+    });
+  }
+
+  void _showEditBioDialog() {
+    final provider = context.read<ProfileProvider>();
+    final controller = TextEditingController(text: provider.bio);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        bool isSaving = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit Bio',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    maxLength: 150,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Add your bio',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: isSaving
+                        ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            onPressed: () async {
+                              setState(() {
+                                isSaving = true;
+                              });
+                              try {
+                                await provider.updateBio(controller.text);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Bio updated successfully!')),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  setState(() {
+                                    isSaving = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to update bio')),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
 
   void _showMenu(BuildContext context, ProfileProvider profileProvider) {
     showModalBottomSheet(
@@ -93,9 +196,11 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userData = widget.userData;
     final highlightsNotifier = context.watch<HighlightsNotifier>();
     final highlights = highlightsNotifier.highlights;
     final profileProvider = context.read<ProfileProvider>();
+    final profileProviderWatch = context.watch<ProfileProvider>();
     final dashboardProvider = context.watch<DashboardProvider>();
     final user = dashboardProvider.userProfile;
 
@@ -213,9 +318,9 @@ class ProfileScreen extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _ProfileStat(count: '0', label: 'Posts'),
-                                _ProfileStat(count: '1.2k', label: 'Followers'),
-                                _ProfileStat(count: '350', label: 'Following'),
+                                _ProfileStat(count: ' ', label: 'Posts'),
+                                _ProfileStat(count: ' ', label: 'Followers'),
+                                _ProfileStat(count: ' ', label: 'Following'),
                               ],
                             ),
                           ),
@@ -224,16 +329,23 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       // Name and Bio
                       Text(
-                        user?.fullName ?? userData['name'] ?? 'Your Name',
+                        profileProviderWatch.username.isNotEmpty ? profileProviderWatch.username : (user?.fullName ?? userData['name'] ?? 'Your Name'),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
-                      Text(
-                        user?.bio ?? userData['bio'] ?? 'No bio yet',
-                        style: const TextStyle(fontSize: 14),
-                      ),
+                      const SizedBox(height: 4),
+                      profileProviderWatch.isLoading
+                          ? const SizedBox(
+                              height: 14,
+                              width: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              profileProviderWatch.bio.isEmpty ? 'Add your bio' : profileProviderWatch.bio,
+                              style: TextStyle(fontSize: 14, color: profileProviderWatch.bio.isEmpty ? Colors.blue : Colors.black),
+                            ),
                       const SizedBox(height: 16),
                       // Action Buttons
                       Row(
@@ -243,13 +355,26 @@ class ProfileScreen extends StatelessWidget {
                               context,
                               'Edit Profile',
                               onTap: () {
+                                final currentBio = context.read<ProfileProvider>().bio;
+                                final currentUsername = context.read<ProfileProvider>().username;
+                                final updatedUserData = Map<String, String>.from(userData);
+                                
+                                updatedUserData['bio'] = currentBio;
+                                if (currentUsername.isNotEmpty) {
+                                  updatedUserData['username'] = currentUsername;
+                                }
+
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) =>
-                                        EditProfileScreen(userData: userData),
+                                        EditProfileScreen(userData: updatedUserData),
                                   ),
-                                );
+                                ).then((_) {
+                                  if (context.mounted) {
+                                    context.read<ProfileProvider>().fetchProfileBio();
+                                  }
+                                });
                               },
                             ),
                           ),
@@ -257,8 +382,8 @@ class ProfileScreen extends StatelessWidget {
                           Expanded(
                             child: _buildActionButton(
                               context,
-                              'Share Profile',
-                              onTap: () {},
+                              'Edit Bio',
+                              onTap: _showEditBioDialog,
                             ),
                           ),
                           const SizedBox(width: 8),

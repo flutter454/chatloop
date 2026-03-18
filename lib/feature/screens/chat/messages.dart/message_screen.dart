@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatloop/feature/screens/chat/messages.dart/message_screen_provider.dart';
 import 'package:chatloop/feature/screens/chat/messages.dart/messages_widgets.dart'; // Import widgets
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -108,6 +107,22 @@ class _MessageScreenState extends State<MessageScreen>
                   ),
                 ],
               ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.phone),
+                  onPressed: () {
+                    provider.startCall(widget.friendId);
+                    // TODO: Implement voice call functionality
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.video_call),
+                  onPressed: () {
+                    // TODO: Implement video call functionality
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
             body: Column(
               children: [

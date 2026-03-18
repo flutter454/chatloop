@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:chatloop/core/services/sharedpreference.dart';
 import 'package:chatloop/feature/screens/chat/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -95,21 +97,46 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _fetchUsersAndNotes() async {
-    _isLoading = true;
+    final supabase = Supabase.instance.client;
+    final currentUserId = supabase.auth.currentUser?.id;
+
+    if (currentUserId == null) {
+      _users = [];
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    final usersCacheKey = 'cached_users_$currentUserId';
+    final notesCacheKey = 'cached_notes_$currentUserId';
+
+    if (_users.isEmpty) {
+      try {
+        final cachedUsersStr = PreferenceService.getString(usersCacheKey);
+        final cachedNotesStr = PreferenceService.getString(notesCacheKey);
+        if (cachedUsersStr != null && cachedNotesStr != null) {
+          final List<dynamic> decodedUsers = jsonDecode(cachedUsersStr);
+          _users = decodedUsers.map((e) => Map<String, dynamic>.from(e)).toList();
+          
+          final Map<String, dynamic> decodedNotes = jsonDecode(cachedNotesStr);
+          _userNotes = decodedNotes.map((key, value) => MapEntry(key, Map<String, dynamic>.from(value)));
+          
+          _isLoading = false;
+          notifyListeners();
+        } else {
+          _isLoading = true;
+          notifyListeners();
+        }
+      } catch (e) {
+        debugPrint('Error loading cached users/notes: $e');
+        _isLoading = true;
+        notifyListeners();
+      }
+    }
+
     _errorMessage = null;
-    notifyListeners();
 
     try {
-      final supabase = Supabase.instance.client;
-      final currentUserId = supabase.auth.currentUser?.id;
-
-      if (currentUserId == null) {
-        _users = [];
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
       // 1. Fetch Profiles
       final profilesResponse = await supabase
           .from('profiles')
@@ -132,6 +159,14 @@ class ChatProvider extends ChangeNotifier {
         _userNotes[note['user_id']] = note;
       }
 
+      // Save to cache
+      try {
+        PreferenceService.saveString(usersCacheKey, jsonEncode(_users));
+        PreferenceService.saveString(notesCacheKey, jsonEncode(_userNotes));
+      } catch (e) {
+        debugPrint('Error saving cached users/notes: $e');
+      }
+
       // Also fetch CURRENT USER'S note specifically if RLS hides it or loop above missed it (e.g. if we filtered).
       // But `notes` query above should get it if it's active.
 
@@ -141,6 +176,7 @@ class ChatProvider extends ChangeNotifier {
       _errorMessage = 'Failed to load data: $e';
       // _users = []; // Keep old users if refresh fails?
     } finally {
+      // Only set loading to false if we didn't just notify an error where the user might want to retry
       _isLoading = false;
       notifyListeners();
     }
@@ -180,10 +216,26 @@ class ChatProvider extends ChangeNotifier {
 
     _chatsSubscription?.cancel();
 
+    final cacheKey = 'cached_chats_$uid';
+
     // We start with loading state if empty
     if (_chats.isEmpty) {
-      _isLoading = true;
-      notifyListeners();
+      try {
+        final cachedString = PreferenceService.getString(cacheKey);
+        if (cachedString != null) {
+          final List<dynamic> decoded = jsonDecode(cachedString);
+          _chats = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+          _isLoading = false;
+          notifyListeners();
+        } else {
+          _isLoading = true;
+          notifyListeners();
+        }
+      } catch (e) {
+        debugPrint('Error loading cached chats: $e');
+        _isLoading = true;
+        notifyListeners();
+      }
     }
 
     _chatsSubscription = _chatService
@@ -196,6 +248,14 @@ class ChatProvider extends ChangeNotifier {
               _chats = enriched;
               _isLoading = false;
               _errorMessage = null;
+
+              // Save to cache
+              try {
+                PreferenceService.saveString(cacheKey, jsonEncode(enriched));
+              } catch (e) {
+                debugPrint('Error saving cached chats: $e');
+              }
+
               notifyListeners();
             } catch (e) {
               debugPrint('Error enriching chats in stream: $e');

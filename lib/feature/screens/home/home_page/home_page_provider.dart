@@ -1,9 +1,16 @@
 import 'dart:convert';
 
+import 'package:chatloop/feature/screens/chat/incoming_call_screen/incoming_call_screen.dart';
+import 'package:chatloop/feature/screens/chat/video_call_screen/video_call_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePageProvider extends ChangeNotifier {
+  Map? incomingCall;
+  bool isCallScreenOpen = false;
+
+  final supabase = Supabase.instance.client;
   HomePageProvider() {
     _loadFromPrefs();
   }
@@ -47,37 +54,6 @@ class HomePageProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('mock_post_comments', jsonEncode(_postComments));
   }
-
-  final List<Map<String, String>> _stories = [
-    {'name': 'Sree', 'image': 'https://i.pravatar.cc/150?u=1'},
-    {'name': 'Chenna', 'image': 'https://i.pravatar.cc/150?u=2'},
-    {'name': 'littel', 'image': 'https://i.pravatar.cc/150?u=3'},
-    {'name': 'sreenadh', 'image': 'https://i.pravatar.cc/150?u=4'},
-  ];
-
-  final List<Map<String, String>> _posts = [
-    {
-      'user': 'lil_wyatt838',
-      'avatar': 'https://i.pravatar.cc/150?u=5',
-      'image': 'https://picsum.photos/id/1011/800/800',
-      'caption': 'Spending time with the squad! 📸',
-    },
-    {
-      'user': 'adventure_seeker',
-      'avatar': 'https://i.pravatar.cc/150?u=6',
-      'image': 'https://picsum.photos/id/1015/800/800',
-      'caption': 'The view from up here is incredible. ⛰️',
-    },
-    {
-      'user': 'urban_explorer',
-      'avatar': 'https://i.pravatar.cc/150?u=7',
-      'image': 'https://picsum.photos/id/1016/800/800',
-      'caption': 'City lights and late nights. 🌃',
-    },
-  ];
-
-  List<Map<String, String>> get stories => _stories;
-  List<Map<String, String>> get posts => _posts;
 
   // ── Likes state ───────────────────────────────────────────────
   final Set<String> _likedPostIds = {};
@@ -144,5 +120,65 @@ class HomePageProvider extends ChangeNotifier {
     });
     notifyListeners();
     _saveCommentsToPrefs();
+  }
+
+  void listenForIncomingCalls(BuildContext context) {
+    final myId = supabase.auth.currentUser!.id;
+
+    supabase
+        .from('calls')
+        .stream(primaryKey: ['id'])
+        .eq('receiver_id', myId)
+        .listen((data) {
+          if (data.isNotEmpty) {
+            final call = data.last;
+
+            if (call['status'] == 'calling' && !isCallScreenOpen) {
+              incomingCall = call;
+              isCallScreenOpen = true;
+              notifyListeners();
+
+              _showIncomingCall(context, call);
+            }
+          }
+        });
+  }
+
+  void _showIncomingCall(BuildContext context, Map call) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IncomingCallScreen(
+          callData: call,
+          onAccept: () => acceptCall(context, call),
+          onReject: () => rejectCall(context, call['id']),
+        ),
+      ),
+    ).then((_) {
+      isCallScreenOpen = false;
+    });
+  }
+
+  Future<void> acceptCall(BuildContext context, Map call) async {
+    await supabase
+        .from('calls')
+        .update({'status': 'accepted'})
+        .eq('id', call['id']);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoCallScreen(channelName: call['channel_id']),
+      ),
+    );
+  }
+
+  Future<void> rejectCall(BuildContext context, String callId) async {
+    await supabase
+        .from('calls')
+        .update({'status': 'rejected'})
+        .eq('id', callId);
+
+    Navigator.pop(context);
   }
 }

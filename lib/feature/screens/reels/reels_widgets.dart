@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/models/post_model.dart';
 import '../../login_main/dashboard/dashboard_provider.dart';
 import '../posts/comments_bottom_sheet.dart';
 import '../posts/post_provider.dart';
+import 'reels_provider.dart';
 
 class ReelVideoPlayer extends StatefulWidget {
   final PostModel post;
@@ -23,86 +25,100 @@ class ReelVideoPlayer extends StatefulWidget {
 }
 
 class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
-  VideoPlayerController? _controller;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeVideo();
-  }
-
-  Future<void> _initializeVideo() async {
-    if (widget.post.signedUrl == null) return;
-    _controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.post.signedUrl!),
-    );
-    try {
-      await _controller!.initialize();
-      _controller!.setLooping(true);
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-        if (widget.isVisible) {
-          _controller!.play();
-        }
-      }
-    } catch (e) {
-      debugPrint("Reel video error: $e");
-    }
-  }
-
   @override
   void didUpdateWidget(ReelVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isVisible != widget.isVisible) {
-      if (widget.isVisible) {
-        _controller?.play();
-      } else {
-        _controller?.pause();
+    if (widget.isVisible != oldWidget.isVisible) {
+      final controller = context.read<ReelsProvider>().getController(
+        widget.post.id.toString(),
+      );
+      if (controller != null && controller.value.isInitialized) {
+        if (widget.isVisible) {
+          controller.play();
+        } else {
+          controller.pause();
+        }
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final postProvider = context.watch<PostProvider>();
     final dashboard = context.watch<DashboardProvider>();
+    final reelsProvider = context.watch<ReelsProvider>();
 
     final postId = widget.post.id.toString();
     final isLiked = postProvider.isLiked(postId);
     final likeCount = postProvider.getLikers(postId).length;
     final commentCount = postProvider.getComments(postId).length;
 
+    final controller = reelsProvider.getController(postId);
+
+    // Initialize if needed
+    if (controller == null && widget.post.signedUrl != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        reelsProvider.initializeController(postId, widget.post.signedUrl!).then(
+          (_) {
+            if (mounted && widget.isVisible) {
+              final c = context.read<ReelsProvider>().getController(postId);
+              c?.play();
+            }
+          },
+        );
+      });
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
         // ── Video Player ──────────────────────────────────────────────
-        if (_isInitialized && _controller != null)
+        if (controller != null && controller.value.isInitialized)
           GestureDetector(
-            onTap: () {
-              if (_controller!.value.isPlaying) {
-                _controller!.pause();
-              } else {
-                _controller!.play();
-              }
+            behavior: HitTestBehavior.opaque,
+            onTap: () => reelsProvider.togglePlayPause(postId),
+            onDoubleTap: () {
+              final currentUserId =
+                  Supabase.instance.client.auth.currentUser?.id ?? 'me';
+              context.read<PostProvider>().toggleLike(
+                postId,
+                currentUserId: currentUserId,
+                userName: dashboard.userName.isNotEmpty
+                    ? dashboard.userName
+                    : 'Me',
+                avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                    ? dashboard.userPhotoUrl
+                    : 'https://i.pravatar.cc/150?u=me',
+              );
             },
-            child: SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller!.value.size.width,
-                  height: _controller!.value.size.height,
-                  child: VideoPlayer(_controller!),
+            onLongPress: () => reelsProvider.togglePlayPause(postId),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: controller.value.size.width,
+                    height: controller.value.size.height,
+                    child: VideoPlayer(controller),
+                  ),
                 ),
-              ),
+                if (!controller.value.isPlaying)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow,
+                        size: 64,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           )
         else
@@ -119,12 +135,14 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
           left: 0,
           right: 0,
           height: 300,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.transparent, Colors.black87],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+          child: IgnorePointer(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Colors.black87],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
             ),
           ),
@@ -133,11 +151,10 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
         // ── Right Side Actions ────────────────────────────────────────
         Positioned(
           right: 16,
-          bottom: 100, // Make sure it sits above the bottom nav bar
+          bottom: 100,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Like Action
               _ReelActionItem(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 iconColor: isLiked ? Colors.red : Colors.white,
@@ -158,8 +175,6 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Comment Action
               _ReelActionItem(
                 icon: Icons.chat_bubble_outline,
                 iconColor: Colors.white,
@@ -174,26 +189,26 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Share Action
               _ReelActionItem(
                 icon: Icons.send_outlined,
                 iconColor: Colors.white,
                 label: 'Share',
                 onTap: () {
-                  // TODO: Implement share
+                  final url = widget.post.signedUrl;
+                  if (url != null && url.isNotEmpty) {
+                    final userName = widget.post.userName?.isNotEmpty == true
+                        ? widget.post.userName!
+                        : 'a friend';
+                    Share.share('Check out this reel from $userName!\n$url');
+                  }
                 },
               ),
               const SizedBox(height: 16),
-
-              // Save Action
               _ReelActionItem(
                 icon: Icons.bookmark_border,
                 iconColor: Colors.white,
                 label: 'Save',
-                onTap: () {
-                  // TODO: Implement save
-                },
+                onTap: () {},
               ),
             ],
           ),
@@ -203,7 +218,7 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
         Positioned(
           left: 16,
           bottom: 100,
-          right: 80, // Prevent overlapping with right actions
+          right: 80,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -226,8 +241,8 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        (widget.post.userName?.isNotEmpty == true) 
-                            ? widget.post.userName! 
+                        (widget.post.userName?.isNotEmpty == true)
+                            ? widget.post.userName!
                             : 'Unknown User',
                         style: const TextStyle(
                           color: Colors.white,
@@ -245,7 +260,6 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer> {
                     ],
                   ),
                   const SizedBox(width: 12),
-                  // Optional follow button
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,

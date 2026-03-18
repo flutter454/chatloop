@@ -46,8 +46,16 @@ class EditProfileProvider extends ChangeNotifier {
         if (userId != null) {
           final filePath = '$userId/profile.jpg';
 
-          await supabase.storage.from('avatars').upload(filePath, _imageFile!,
-              fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
+          await supabase.storage
+              .from('avatars')
+              .upload(
+                filePath,
+                _imageFile!,
+                fileOptions: const FileOptions(
+                  cacheControl: '3600',
+                  upsert: true,
+                ),
+              );
 
           final String signedUrl = await supabase.storage
               .from('avatars')
@@ -59,9 +67,9 @@ class EditProfileProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('Error uploading image: $e');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to upload image: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to upload image: $e')));
         }
         _isUploading = false;
         notifyListeners();
@@ -77,7 +85,7 @@ class EditProfileProvider extends ChangeNotifier {
       await PreferenceService.saveString('photoUrl', imageUrl);
       userData['photoUrl'] = imageUrl;
     }
-    
+
     // Also update the map passed in
     userData['fullName'] = fullName;
     userData['name'] = fullName;
@@ -100,11 +108,22 @@ class EditProfileProvider extends ChangeNotifier {
 
       final userId = supabase.auth.currentUser?.id;
       if (userId != null) {
-        await supabase.from('stories').update({
-          'user_name': fullName,
-          if (imageUrl != null) 'user_photo': imageUrl,
-        }).eq('user_id', userId);
-        debugPrint('Synced profile changes to stories table ✅');
+        await supabase
+            .from('stories')
+            .update({
+              'user_name': fullName,
+              if (imageUrl != null) 'user_photo': imageUrl,
+            })
+            .eq('user_id', userId);
+            
+        await supabase.from('profilesbio').upsert({
+          'id': userId,
+          'username': username,
+          'bio': bio,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+            
+        debugPrint('Synced profile changes to stories and profilesBio tables ✅');
       }
     } catch (e) {
       debugPrint('Error updating Supabase user metadata/stories: $e');
