@@ -1,3 +1,4 @@
+import 'package:chatloop/feature/screens/home/search/practice.dart';
 import 'package:flutter/material.dart';
 
 class SearchScreen extends StatelessWidget {
@@ -5,7 +6,7 @@ class SearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.transparent,
       body: Center(
         child: Column(
@@ -20,6 +21,15 @@ class SearchScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF4A4A4A),
               ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Practice()),
+                );
+              },
+              child: Text('data'),
             ),
           ],
         ),

@@ -3,8 +3,9 @@ class HighlightModel {
   final String name;
   final String coverUrl;
   final List<String> mediaUrls;
-  final List<String> mediaTypes;     // 'image' or 'video' per entry
-  final List<String> thumbnailUrls;  // thumbnail per entry (empty string if none)
+  final List<String> mediaTypes; // 'image' or 'video' per entry
+  final List<String>
+      thumbnailUrls; // thumbnail per entry (empty string if none)
 
   HighlightModel({
     required this.id,
@@ -13,17 +14,17 @@ class HighlightModel {
     required this.mediaUrls,
     List<String>? mediaTypes,
     List<String>? thumbnailUrls,
-  }) : mediaTypes = mediaTypes ?? List.filled(mediaUrls.length, 'image'),
-       thumbnailUrls = thumbnailUrls ?? List.filled(mediaUrls.length, '');
+  })  : mediaTypes = mediaTypes ?? List.filled(mediaUrls.length, 'image'),
+        thumbnailUrls = thumbnailUrls ?? List.filled(mediaUrls.length, '');
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'name': name,
-    'coverUrl': coverUrl,
-    'mediaUrls': mediaUrls,
-    'mediaTypes': mediaTypes,
-    'thumbnailUrls': thumbnailUrls,
-  };
+        'id': id,
+        'name': name,
+        'coverUrl': coverUrl,
+        'mediaUrls': mediaUrls,
+        'mediaTypes': mediaTypes,
+        'thumbnailUrls': thumbnailUrls,
+      };
 
   factory HighlightModel.fromMap(Map<String, dynamic> map) {
     final urls = List<String>.from(map['mediaUrls'] ?? []);

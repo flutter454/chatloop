@@ -1,7 +1,8 @@
 import 'dart:convert';
+
+import 'package:chatloop/core/models/highlight_model.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:chatloop/core/models/highlight_model.dart';
 
 class HighlightsService {
   static const _key = 'profile_highlights';
@@ -9,13 +10,16 @@ class HighlightsService {
   static Future<List<HighlightModel>> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_key) ?? [];
-    return raw.map((e) {
-      try {
-        return HighlightModel.fromMap(jsonDecode(e));
-      } catch (_) {
-        return null;
-      }
-    }).whereType<HighlightModel>().toList();
+    return raw
+        .map((e) {
+          try {
+            return HighlightModel.fromMap(jsonDecode(e));
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<HighlightModel>()
+        .toList();
   }
 
   static Future<void> save(List<HighlightModel> highlights) async {

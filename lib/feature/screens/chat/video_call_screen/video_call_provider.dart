@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class VideoCallProvider extends ChangeNotifier {
-  late RtcEngine engine; // ✅ FIXED
+  RtcEngine? engine; // ✅ FIXED
 
   int? remoteUid;
   int seconds = 0;
@@ -20,9 +20,9 @@ class VideoCallProvider extends ChangeNotifier {
     await [Permission.microphone, Permission.camera].request();
 
     engine = createAgoraRtcEngine();
-    await engine.initialize(RtcEngineContext(appId: appId));
+    await engine?.initialize(RtcEngineContext(appId: appId));
 
-    engine.registerEventHandler(
+    engine?.registerEventHandler(
       RtcEngineEventHandler(
         onUserJoined: (connection, uid, elapsed) {
           remoteUid = uid;
@@ -39,10 +39,10 @@ class VideoCallProvider extends ChangeNotifier {
       ),
     );
 
-    await engine.enableVideo();
-    await engine.startPreview();
+    await engine?.enableVideo();
+    await engine?.startPreview();
 
-    await engine.joinChannel(
+    await engine?.joinChannel(
       token: "",
       channelId: channelName,
       uid: 0,
@@ -66,19 +66,19 @@ class VideoCallProvider extends ChangeNotifier {
 
   void toggleMute() {
     isMuted = !isMuted;
-    engine.muteLocalAudioStream(isMuted);
+    engine?.muteLocalAudioStream(isMuted);
     notifyListeners();
   }
 
   void switchCamera() {
-    engine.switchCamera();
+    engine?.switchCamera();
   }
 
   Future<void> endCall() async {
     timer?.cancel();
     seconds = 0;
 
-    await engine.leaveChannel();
-    await engine.release();
+    await engine?.leaveChannel();
+    await engine?.release();
   }
 }

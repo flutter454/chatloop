@@ -50,7 +50,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             child: provider.remoteUid != null
                 ? AgoraVideoView(
                     controller: VideoViewController.remote(
-                      rtcEngine: provider.engine,
+                      rtcEngine: provider.engine!,
                       canvas: VideoCanvas(uid: provider.remoteUid),
                       connection: RtcConnection(channelId: widget.channelName),
                     ),
@@ -129,7 +129,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               height: 160,
               child: AgoraVideoView(
                 controller: VideoViewController(
-                  rtcEngine: provider.engine,
+                  rtcEngine: provider.engine!,
                   canvas: const VideoCanvas(uid: 0),
                 ),
               ),
