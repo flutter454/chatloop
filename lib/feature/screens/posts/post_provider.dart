@@ -122,7 +122,7 @@ class PostProvider extends ChangeNotifier {
   // ── Fetch Likes & Comments ──────────────────────────────────────
   Future<void> _fetchLikesAndComments(List<int> postIds) async {
     if (postIds.isEmpty) return;
-    
+
     // Initialize caches for these posts
     for (final id in postIds) {
       if (!_postLikers.containsKey(id.toString())) {
@@ -130,7 +130,7 @@ class PostProvider extends ChangeNotifier {
       } else {
         _postLikers[id.toString()]!.clear();
       }
-      
+
       if (!_postComments.containsKey(id.toString())) {
         _postComments[id.toString()] = [];
       } else {
@@ -146,11 +146,13 @@ class PostProvider extends ChangeNotifier {
       try {
         final response = await _supabase
             .from('post_likes')
-            .select('post_id, user_id, profiles(full_name, username, avatar_url)')
+            .select(
+                'post_id, user_id, profiles(full_name, username, avatar_url)')
             .inFilter('post_id', postIds);
         likesList = response as List<dynamic>;
       } catch (e) {
-        debugPrint('⚠️ Likes profile join failed, fetching without profiles: $e');
+        debugPrint(
+            '⚠️ Likes profile join failed, fetching without profiles: $e');
         final response = await _supabase
             .from('post_likes')
             .select('*')
@@ -162,18 +164,19 @@ class PostProvider extends ChangeNotifier {
 
       for (final like in likesList) {
         final map = like as Map<String, dynamic>;
-        if (!map.containsKey('post_id') || !map.containsKey('user_id')) continue;
-        
+        if (!map.containsKey('post_id') || !map.containsKey('user_id'))
+          continue;
+
         final postId = map['post_id'].toString();
         final profile = map['profiles'] as Map<String, dynamic>?;
         final likerId = map['user_id'].toString();
-        
+
         String name = profile?['full_name'] ?? 'User';
         String avatar = profile?['avatar_url'] ?? '';
-        
+
         if (profile == null && _profileCache.containsKey(likerId)) {
-           name = _profileCache[likerId]!['full_name'] ?? 'User';
-           avatar = _profileCache[likerId]!['avatar_url'] ?? '';
+          name = _profileCache[likerId]!['full_name'] ?? 'User';
+          avatar = _profileCache[likerId]!['avatar_url'] ?? '';
         }
 
         _postLikers[postId]?.add({
@@ -196,7 +199,8 @@ class PostProvider extends ChangeNotifier {
       try {
         final response = await _supabase
             .from('post_comments')
-            .select('id, post_id, user_id, text, created_at, profiles(full_name, username, avatar_url)')
+            .select(
+                'id, post_id, user_id, text, created_at, profiles(full_name, username, avatar_url)')
             .inFilter('post_id', postIds)
             .order('created_at', ascending: true);
         commentsList = response as List<dynamic>;
@@ -210,18 +214,20 @@ class PostProvider extends ChangeNotifier {
               .order('created_at', ascending: true);
           commentsList = response as List<dynamic>;
         } catch (innerE) {
-           debugPrint('⚠️ Comments fallback failed with order, trying without: $innerE');
-           final response = await _supabase
+          debugPrint(
+              '⚠️ Comments fallback failed with order, trying without: $innerE');
+          final response = await _supabase
               .from('post_comments')
               .select('*')
               .inFilter('post_id', postIds);
-           commentsList = response as List<dynamic>;
+          commentsList = response as List<dynamic>;
         }
       }
 
       for (final comment in commentsList) {
         final map = comment as Map<String, dynamic>;
-        if (!map.containsKey('post_id') || !map.containsKey('user_id')) continue;
+        if (!map.containsKey('post_id') || !map.containsKey('user_id'))
+          continue;
 
         final postId = map['post_id'].toString();
         final profile = map['profiles'] as Map<String, dynamic>?;
@@ -229,10 +235,10 @@ class PostProvider extends ChangeNotifier {
 
         String name = profile?['full_name'] ?? 'User';
         String avatar = profile?['avatar_url'] ?? '';
-        
+
         if (profile == null && _profileCache.containsKey(commenterId)) {
-           name = _profileCache[commenterId]!['full_name'] ?? 'User';
-           avatar = _profileCache[commenterId]!['avatar_url'] ?? '';
+          name = _profileCache[commenterId]!['full_name'] ?? 'User';
+          avatar = _profileCache[commenterId]!['avatar_url'] ?? '';
         }
 
         _postComments[postId]?.add({
@@ -307,9 +313,7 @@ class PostProvider extends ChangeNotifier {
       // ── Step 2: Upload file to PRIVATE bucket ────────────────
       final String uploadResult;
       try {
-        uploadResult = await _supabase.storage
-            .from(_bucket)
-            .upload(
+        uploadResult = await _supabase.storage.from(_bucket).upload(
               storagePath,
               file,
               fileOptions: FileOptions(
@@ -412,7 +416,7 @@ class PostProvider extends ChangeNotifier {
   /// Pass [forceRefresh: true] to bypass the cache (used by pull-to-refresh,
   /// upload success and delete).
   Future<void> fetchPosts({bool forceRefresh = false}) async {
-    final String cacheKey = 'cached_posts';
+    const String cacheKey = 'cached_posts';
 
     if (!_hasFetchedOnce && !forceRefresh) {
       if (_posts.isEmpty) {
@@ -420,14 +424,16 @@ class PostProvider extends ChangeNotifier {
           final cachedStr = PreferenceService.getString(cacheKey);
           if (cachedStr != null) {
             final List<dynamic> decoded = jsonDecode(cachedStr);
-            _posts = decoded.map((e) => PostModel.fromJsonMap(Map<String, dynamic>.from(e))).toList();
+            _posts = decoded
+                .map((e) => PostModel.fromJsonMap(Map<String, dynamic>.from(e)))
+                .toList();
             _isFeedLoading = false;
             _hasFetchedOnce = true;
             notifyListeners();
             debugPrint('📦 Instantly loaded ${_posts.length} posts from cache');
           } else {
-             _isFeedLoading = true;
-             notifyListeners();
+            _isFeedLoading = true;
+            notifyListeners();
           }
         } catch (e) {
           debugPrint('⚠️ Failed to load cached posts: $e');
@@ -438,7 +444,10 @@ class PostProvider extends ChangeNotifier {
     }
 
     // ── Use cache if we already have data and caller didn't ask to refresh ──
-    if (!forceRefresh && _hasFetchedOnce && _posts.isNotEmpty && !_isFeedLoading) {
+    if (!forceRefresh &&
+        _hasFetchedOnce &&
+        _posts.isNotEmpty &&
+        !_isFeedLoading) {
       // Allow background updating but dont block UI
       debugPrint('📦 Using cached posts and fetching in background');
     }
@@ -522,10 +531,11 @@ class PostProvider extends ChangeNotifier {
 
       // Save to cache memory to show up quickly immediately next time
       try {
-        final List<Map<String, dynamic>> cacheData = _posts.map((p) => p.toJsonMap()).toList();
+        final List<Map<String, dynamic>> cacheData =
+            _posts.map((p) => p.toJsonMap()).toList();
         PreferenceService.saveString(cacheKey, jsonEncode(cacheData));
       } catch (e) {
-         debugPrint('⚠️ Error saving cached posts: $e');
+        debugPrint('⚠️ Error saving cached posts: $e');
       }
 
       notifyListeners();

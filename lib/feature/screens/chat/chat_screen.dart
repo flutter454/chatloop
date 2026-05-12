@@ -28,7 +28,6 @@ class _ChatScreenContent extends StatefulWidget {
 }
 
 class _ChatScreenContentState extends State<_ChatScreenContent> {
-
   String _cleanUrl(String? url) {
     if (url == null || url.isEmpty) return 'https://i.pravatar.cc/150';
     if (url.contains(',')) {
@@ -211,9 +210,8 @@ class _ChatScreenContentState extends State<_ChatScreenContent> {
                             noteProvider.isLiked
                                 ? Icons.favorite
                                 : Icons.favorite_border,
-                            color: noteProvider.isLiked
-                                ? Colors.red
-                                : Colors.grey,
+                            color:
+                                noteProvider.isLiked ? Colors.red : Colors.grey,
                             size: 30,
                           ),
                           onPressed: () {
@@ -526,18 +524,17 @@ class _ChatScreenContentState extends State<_ChatScreenContent> {
               // Fallback if profile missing
               final String friendName = friendProfile != null
                   ? (friendProfile['full_name'] ??
-                        friendProfile['username'] ??
-                        'User')
+                      friendProfile['username'] ??
+                      'User')
                   : 'Unknown User';
               final String friendPhoto = _cleanUrl(
                 friendProfile != null
                     ? (friendProfile['avatar_url'] ??
-                          friendProfile['photo_url'])
+                        friendProfile['photo_url'])
                     : null,
               );
-              final String friendId = friendProfile != null
-                  ? friendProfile['id']
-                  : '';
+              final String friendId =
+                  friendProfile != null ? friendProfile['id'] : '';
 
               String messageText = 'Start chatting';
               String timeText = '';
@@ -550,8 +547,9 @@ class _ChatScreenContentState extends State<_ChatScreenContent> {
                 ).toLocal();
                 timeText = DateFormat('h:mm a').format(created);
                 isSeen = lastMessage['is_seen'] ?? false;
-                if (lastMessage['sender_id'] == currentUserId)
+                if (lastMessage['sender_id'] == currentUserId) {
                   isSeen = true; // My messages are always "seen" by me
+                }
               }
 
               return ListTile(
@@ -582,9 +580,8 @@ class _ChatScreenContentState extends State<_ChatScreenContent> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isSeen ? Colors.grey : Colors.black,
-                          fontWeight: isSeen
-                              ? FontWeight.normal
-                              : FontWeight.bold,
+                          fontWeight:
+                              isSeen ? FontWeight.normal : FontWeight.bold,
                           fontSize: 13, // Slightly smaller font
                         ),
                       ),
@@ -619,9 +616,8 @@ class _ChatScreenContentState extends State<_ChatScreenContent> {
                 },
               );
             },
-            childCount: chatProvider.chats.isEmpty
-                ? 1
-                : chatProvider.chats.length,
+            childCount:
+                chatProvider.chats.isEmpty ? 1 : chatProvider.chats.length,
           ),
         ),
       ],

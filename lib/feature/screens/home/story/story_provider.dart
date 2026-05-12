@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:chatloop/core/models/story_model.dart';
 import 'package:chatloop/core/services/sharedpreference.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,8 +10,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-
-import 'package:chatloop/core/models/story_model.dart';
 
 class StoryProvider extends ChangeNotifier {
   final ImagePicker _picker = ImagePicker();
@@ -120,8 +119,7 @@ class StoryProvider extends ChangeNotifier {
     _myStories.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     // Check closest expiry
     final oldestStory = _myStories.first;
-    final remainingTime =
-        const Duration(days: 1) -
+    final remainingTime = const Duration(days: 1) -
         DateTime.now().difference(oldestStory.timestamp);
 
     if (remainingTime.inSeconds > 0) {
@@ -145,9 +143,8 @@ class StoryProvider extends ChangeNotifier {
 
   Future<void> _saveStoriesToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final List<String> storiesJson = _myStories
-        .map((s) => jsonEncode(s.toMap()))
-        .toList();
+    final List<String> storiesJson =
+        _myStories.map((s) => jsonEncode(s.toMap())).toList();
     if (storiesJson.isEmpty) {
       await prefs.remove('my_stories');
     } else {
@@ -164,7 +161,7 @@ class StoryProvider extends ChangeNotifier {
         prefs.getBool('hasSeenStoryPermissionDialog') ?? false;
 
     if (!hasSeenDialog) {
-      final bool? proceed = await _showPermissionExplanationDialog(context);
+      final bool proceed = await _showPermissionExplanationDialog(context);
       if (proceed != true) return null;
       await prefs.setBool('hasSeenStoryPermissionDialog', true);
     }
@@ -185,9 +182,9 @@ class StoryProvider extends ChangeNotifier {
     String? musicCover,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = await PreferenceService.getString('userId') ?? 'anonymous';
+    final userId = PreferenceService.getString('userId') ?? 'anonymous';
     String? thumbnailPath;
-    String? userPhoto = await PreferenceService.getString('photoUrl');
+    String? userPhoto = PreferenceService.getString('photoUrl');
 
     // Prefer public URL from Supabase Auth metadata if available
     try {
@@ -225,8 +222,7 @@ class StoryProvider extends ChangeNotifier {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null && user.userMetadata != null) {
-        userName =
-            user.userMetadata?['full_name'] ??
+        userName = user.userMetadata?['full_name'] ??
             user.userMetadata?['username'] ??
             userName;
       }
@@ -299,9 +295,7 @@ class StoryProvider extends ChangeNotifier {
       }
 
       // 1. Upload File (Relies on RLS Policy: INSERT/UPDATE for owner)
-      await supabase.storage
-          .from('stories')
-          .upload(
+      await supabase.storage.from('stories').upload(
             storagePath,
             file,
             fileOptions: FileOptions(
@@ -320,9 +314,7 @@ class StoryProvider extends ChangeNotifier {
           final thumbStoragePath =
               '$userId/${timestamp.millisecondsSinceEpoch}_thumb_$thumbName';
 
-          await supabase.storage
-              .from('stories')
-              .upload(
+          await supabase.storage.from('stories').upload(
                 thumbStoragePath,
                 thumbFile,
                 fileOptions: const FileOptions(
@@ -357,10 +349,8 @@ class StoryProvider extends ChangeNotifier {
         // Use UTC for server consistency
         'created_at': timestamp.toUtc().toIso8601String(),
         // DB controls visibility via expire_at
-        'expire_at': timestamp
-            .toUtc()
-            .add(const Duration(hours: 24))
-            .toIso8601String(),
+        'expire_at':
+            timestamp.toUtc().add(const Duration(hours: 24)).toIso8601String(),
         'user_photo': userPhoto,
         'caption': caption,
         'music_name': musicName,
@@ -410,9 +400,8 @@ class StoryProvider extends ChangeNotifier {
   Future<List<StoryData>> fetchAllMyStories() async {
     try {
       final supabase = Supabase.instance.client;
-      final currentUserId =
-          supabase.auth.currentUser?.id ??
-          await PreferenceService.getString('userId') ??
+      final currentUserId = supabase.auth.currentUser?.id ??
+          PreferenceService.getString('userId') ??
           '';
 
       if (currentUserId.isEmpty) return [];
@@ -504,14 +493,12 @@ class StoryProvider extends ChangeNotifier {
     }
   }
 
-
   Future<void> fetchStories() async {
     try {
       final supabase = Supabase.instance.client;
       // PRIORITIZE Supabase Auth ID as it matches the DB "user_id" column strictly
-      final currentUserId =
-          supabase.auth.currentUser?.id ??
-          await PreferenceService.getString('userId') ??
+      final currentUserId = supabase.auth.currentUser?.id ??
+          PreferenceService.getString('userId') ??
           '';
 
       // 1. Fetch ALL stories first

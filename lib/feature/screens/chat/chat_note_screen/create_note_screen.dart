@@ -53,7 +53,6 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                     icon: const Icon(
                       Icons.close,
                       size: 30,
-
                       color: Color.fromRGBO(0, 0, 0, 1),
                     ),
                     onPressed: () => Navigator.pop(context),
@@ -188,8 +187,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
               padding: EdgeInsets.only(
                 left: 16,
                 right: 16,
-                bottom:
-                    MediaQuery.of(context).viewInsets.bottom +
+                bottom: MediaQuery.of(context).viewInsets.bottom +
                     10, // Adjust for keyboard
               ),
               child: Row(
@@ -206,8 +204,8 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Row(
-                        children: const [
+                      child: const Row(
+                        children: [
                           Icon(Icons.person, size: 16, color: Colors.black),
                           SizedBox(width: 4),
                           Text(
@@ -223,7 +221,6 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                       ),
                     ),
                   ),
-
                   ElevatedButton(
                     onPressed: () {
                       widget.onSave(_controller.text);

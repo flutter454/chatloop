@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:supabase/supabase.dart';
 
 void main() async {
@@ -8,7 +7,10 @@ void main() async {
   );
 
   try {
-    final response = await supabase.from('profiles').select('id, full_name, avatar_url').limit(5);
+    final response = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .limit(5);
     print('PROFILES (full_name, avatar_url):');
     print(response);
   } catch (e) {

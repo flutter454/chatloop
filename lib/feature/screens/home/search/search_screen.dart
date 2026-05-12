@@ -12,9 +12,10 @@ class SearchScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_rounded, size: 80, color: Color(0xFFFF4081)),
-            SizedBox(height: 16),
-            Text(
+            const Icon(Icons.search_rounded,
+                size: 80, color: Color(0xFFFF4081)),
+            const SizedBox(height: 16),
+            const Text(
               'Search',
               style: TextStyle(
                 fontSize: 24,
@@ -26,10 +27,10 @@ class SearchScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Practice()),
+                  MaterialPageRoute(builder: (context) => const Practice()),
                 );
               },
-              child: Text('data'),
+              child: const Text('data'),
             ),
           ],
         ),

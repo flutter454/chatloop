@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chatloop/core/models/story_model.dart';
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +10,6 @@ import 'package:video_player/video_player.dart';
 
 import 'music_widgets/music_provider.dart';
 import 'music_widgets/music_selection_sheet.dart';
-import 'package:chatloop/core/models/story_model.dart';
 import 'story_editor_provider.dart';
 import 'story_provider.dart';
 
@@ -83,28 +83,22 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                           child: widget.type == StoryMediaType.image
                               ? Image.file(widget.file, fit: BoxFit.cover)
                               : (editor.isInitialized &&
-                                        editor.videoController != null
-                                    ? FittedBox(
-                                        fit: BoxFit.cover,
-                                        child: SizedBox(
-                                          width: editor
-                                              .videoController!
-                                              .value
-                                              .size
-                                              .width,
-                                          height: editor
-                                              .videoController!
-                                              .value
-                                              .size
-                                              .height,
-                                          child: VideoPlayer(
-                                            editor.videoController!,
-                                          ),
+                                      editor.videoController != null
+                                  ? FittedBox(
+                                      fit: BoxFit.cover,
+                                      child: SizedBox(
+                                        width: editor
+                                            .videoController!.value.size.width,
+                                        height: editor
+                                            .videoController!.value.size.height,
+                                        child: VideoPlayer(
+                                          editor.videoController!,
                                         ),
-                                      )
-                                    : const Center(
-                                        child: CircularProgressIndicator(),
-                                      )),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: CircularProgressIndicator(),
+                                    )),
                         ),
                         // Close Button (Top Left)
                         Positioned(
@@ -163,7 +157,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                                   color: Colors.white,
                                   size: 28,
                                 ),
-
                                 onPressed: () {
                                   showModalBottomSheet(
                                     context: context,
@@ -176,39 +169,37 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                                         child: MusicSelectionSheet(
                                           onSongSelected:
                                               (songName, url, coverUrl) async {
-                                                Navigator.pop(ctx);
-                                                // Update provider
-                                                editor.setMusic(
-                                                  songName,
-                                                  url,
-                                                  coverUrl,
-                                                );
+                                            Navigator.pop(ctx);
+                                            // Update provider
+                                            editor.setMusic(
+                                              songName,
+                                              url,
+                                              coverUrl,
+                                            );
 
-                                                // Handle Audio Player safely
-                                                if (_bgMusicPlayer == null) {
-                                                  _bgMusicPlayer =
-                                                      AudioPlayer();
-                                                } else {
-                                                  await _bgMusicPlayer!.stop();
-                                                }
+                                            // Handle Audio Player safely
+                                            if (_bgMusicPlayer == null) {
+                                              _bgMusicPlayer = AudioPlayer();
+                                            } else {
+                                              await _bgMusicPlayer!.stop();
+                                            }
 
-                                                if (!mounted) return;
+                                            if (!mounted) return;
 
-                                                try {
-                                                  await _bgMusicPlayer!.setUrl(
-                                                    url,
-                                                  );
-                                                  await _bgMusicPlayer!.play();
-                                                  await _bgMusicPlayer!
-                                                      .setLoopMode(
-                                                        LoopMode.one,
-                                                      );
-                                                } catch (e) {
-                                                  debugPrint(
-                                                    'Error playing bg music: $e',
-                                                  );
-                                                }
-                                              },
+                                            try {
+                                              await _bgMusicPlayer!.setUrl(
+                                                url,
+                                              );
+                                              await _bgMusicPlayer!.play();
+                                              await _bgMusicPlayer!.setLoopMode(
+                                                LoopMode.one,
+                                              );
+                                            } catch (e) {
+                                              debugPrint(
+                                                'Error playing bg music: $e',
+                                              );
+                                            }
+                                          },
                                         ),
                                       ),
                                     ),
@@ -294,15 +285,15 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
                                               Container(
-                                                width: 30,
-                                                height: 30,
-                                                color: Colors.grey[300],
-                                                child: const Icon(
-                                                  Icons.music_note,
-                                                  size: 20,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
+                                            width: 30,
+                                            height: 30,
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.music_note,
+                                              size: 20,
+                                              color: Colors.black,
+                                            ),
+                                          ),
                                         ),
                                       )
                                     else
@@ -377,13 +368,14 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                           child: ValueListenableBuilder<TextEditingValue>(
                             valueListenable: _captionController,
                             builder: (context, value, child) {
-                              if (value.text.isEmpty)
+                              if (value.text.isEmpty) {
                                 return const SizedBox.shrink();
+                              }
                               // Safely access DashboardProvider if available, else placeholder
                               ImageProvider bgImage;
                               try {
-                                final userData = context
-                                    .read<DashboardProvider>();
+                                final userData =
+                                    context.read<DashboardProvider>();
                                 if (userData.userProfile?.photoUrl != null &&
                                     userData.userProfile!.photoUrl.isNotEmpty) {
                                   final url = userData.userProfile!.photoUrl;
@@ -470,22 +462,22 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                     onPressed: () {
                       final editor = context.read<StoryEditorProvider>();
                       context.read<StoryProvider>().createStory(
-                        widget.file,
-                        widget.type,
-                        caption: _captionController.text,
-                        overlayText: editor.activeOverlayText.isNotEmpty
-                            ? editor.activeOverlayText
-                            : null,
-                        overlayX: editor.activeOverlayText.isNotEmpty
-                            ? editor.overlayOffset.dx
-                            : null,
-                        overlayY: editor.activeOverlayText.isNotEmpty
-                            ? editor.overlayOffset.dy
-                            : null,
-                        musicName: editor.selectedMusicName,
-                        musicUrl: editor.selectedMusicUrl,
-                        musicCover: editor.selectedMusicCover,
-                      );
+                            widget.file,
+                            widget.type,
+                            caption: _captionController.text,
+                            overlayText: editor.activeOverlayText.isNotEmpty
+                                ? editor.activeOverlayText
+                                : null,
+                            overlayX: editor.activeOverlayText.isNotEmpty
+                                ? editor.overlayOffset.dx
+                                : null,
+                            overlayY: editor.activeOverlayText.isNotEmpty
+                                ? editor.overlayOffset.dy
+                                : null,
+                            musicName: editor.selectedMusicName,
+                            musicUrl: editor.selectedMusicUrl,
+                            musicCover: editor.selectedMusicCover,
+                          );
                       Navigator.pop(context);
                     },
                   ),

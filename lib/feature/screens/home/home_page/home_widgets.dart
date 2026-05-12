@@ -2,8 +2,8 @@
 
 import 'dart:io';
 
-import 'package:chatloop/core/models/story_model.dart';
 import 'package:chatloop/core/models/post_model.dart';
+import 'package:chatloop/core/models/story_model.dart';
 import 'package:chatloop/feature/login_main/dashboard/dashboard_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,9 +12,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../posts/comments_bottom_sheet.dart';
 import '../../posts/media_picker_screen.dart';
 import '../../posts/post_provider.dart';
-import '../../posts/comments_bottom_sheet.dart';
 import '../story/story_provider.dart';
 import 'home_page_provider.dart';
 import 'story_view_provider.dart';
@@ -105,65 +105,54 @@ class HomeWidgets {
                             backgroundColor: Colors.grey.shade200,
                             backgroundImage: storyProvider.myStory != null
                                 ? (storyProvider.myStory!.type ==
-                                          StoryMediaType.image
-                                      ? (storyProvider.myStory!.file != null
-                                            ? FileImage(
-                                                storyProvider.myStory!.file!,
-                                              )
-                                            : NetworkImage(
-                                                    storyProvider
-                                                        .myStory!
-                                                        .mediaUrl!,
+                                        StoryMediaType.image
+                                    ? (storyProvider.myStory!.file != null
+                                        ? FileImage(
+                                            storyProvider.myStory!.file!,
+                                          )
+                                        : NetworkImage(
+                                            storyProvider.myStory!.mediaUrl!,
+                                          ) as ImageProvider)
+                                    : (storyProvider.myStory!.thumbnailPath !=
+                                            null
+                                        ? FileImage(
+                                            File(
+                                              storyProvider
+                                                  .myStory!.thumbnailPath!,
+                                            ),
+                                          )
+                                        : (dashboardProvider
+                                                .userPhotoUrl.isNotEmpty
+                                            ? (dashboardProvider.userPhotoUrl
+                                                    .startsWith('http')
+                                                ? NetworkImage(
+                                                    dashboardProvider
+                                                        .userPhotoUrl,
                                                   )
-                                                  as ImageProvider)
-                                      : (storyProvider.myStory!.thumbnailPath !=
-                                                null
-                                            ? FileImage(
-                                                File(
-                                                  storyProvider
-                                                      .myStory!
-                                                      .thumbnailPath!,
-                                                ),
-                                              )
-                                            : (dashboardProvider
-                                                      .userPhotoUrl
-                                                      .isNotEmpty
-                                                  ? (dashboardProvider
-                                                            .userPhotoUrl
-                                                            .startsWith('http')
-                                                        ? NetworkImage(
-                                                            dashboardProvider
-                                                                .userPhotoUrl,
-                                                          )
-                                                        : FileImage(
-                                                                File(
-                                                                  dashboardProvider
-                                                                      .userPhotoUrl,
-                                                                ),
-                                                              )
-                                                              as ImageProvider)
-                                                  : const NetworkImage(
-                                                          'https://i.pravatar.cc/150?u=me',
-                                                        )
-                                                        as ImageProvider)))
-                                : (dashboardProvider.userPhotoUrl.isNotEmpty
-                                      ? (dashboardProvider.userPhotoUrl
-                                                .startsWith('http')
-                                            ? NetworkImage(
-                                                dashboardProvider.userPhotoUrl,
-                                              )
-                                            : FileImage(
+                                                : FileImage(
                                                     File(
                                                       dashboardProvider
                                                           .userPhotoUrl,
                                                     ),
-                                                  )
-                                                  as ImageProvider)
-                                      : const NetworkImage(
-                                          'https://i.pravatar.cc/150?u=me',
-                                        )),
-                            child:
-                                storyProvider.myStory != null &&
+                                                  ) as ImageProvider)
+                                            : const NetworkImage(
+                                                'https://i.pravatar.cc/150?u=me',
+                                              ) as ImageProvider)))
+                                : (dashboardProvider.userPhotoUrl.isNotEmpty
+                                    ? (dashboardProvider.userPhotoUrl
+                                            .startsWith('http')
+                                        ? NetworkImage(
+                                            dashboardProvider.userPhotoUrl,
+                                          )
+                                        : FileImage(
+                                            File(
+                                              dashboardProvider.userPhotoUrl,
+                                            ),
+                                          ) as ImageProvider)
+                                    : const NetworkImage(
+                                        'https://i.pravatar.cc/150?u=me',
+                                      )),
+                            child: storyProvider.myStory != null &&
                                     storyProvider.myStory!.type ==
                                         StoryMediaType.video
                                 ? const Icon(
@@ -178,7 +167,6 @@ class HomeWidgets {
                       Positioned(
                         right: 0,
                         bottom: 0,
-
                         child: GestureDetector(
                           onTap: () => _handleStoryCreation(context),
                           child: Container(
@@ -198,7 +186,7 @@ class HomeWidgets {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     'Your Story',
                     style: TextStyle(
                       fontSize: 12,
@@ -240,8 +228,7 @@ class HomeWidgets {
                           shape: BoxShape.circle,
                         ),
                         child: ClipOval(
-                          child:
-                              (firstStory.userPhoto != null &&
+                          child: (firstStory.userPhoto != null &&
                                   firstStory.userPhoto!.isNotEmpty &&
                                   firstStory.userPhoto!.startsWith('http'))
                               ? Image.network(
@@ -263,7 +250,7 @@ class HomeWidgets {
                                         child: Text(
                                           firstStory.userName.isNotEmpty
                                               ? firstStory.userName[0]
-                                                    .toUpperCase()
+                                                  .toUpperCase()
                                               : '?',
                                           style: const TextStyle(
                                             fontSize: 24,
@@ -338,7 +325,8 @@ class HomeWidgets {
       backgroundColor: Colors.black,
       useSafeArea: true,
       builder: (context) => ChangeNotifierProvider(
-        create: (_) => StoryViewProvider()..init(stories, initialIndex, isHighlight: isHighlight),
+        create: (_) => StoryViewProvider()
+          ..init(stories, initialIndex, isHighlight: isHighlight),
         child: const StoryViewer(),
       ),
     );
@@ -412,8 +400,8 @@ class HomeWidgets {
     // Only use the post data so it reflects the actual creator of the post
     final displayAvatar = post.userAvatarUrl;
     final displayUserName = (post.userName != null && post.userName!.isNotEmpty)
-              ? post.userName!
-              : 'Unknown User';
+        ? post.userName!
+        : 'Unknown User';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,9 +414,10 @@ class HomeWidgets {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: displayAvatar != null && displayAvatar.isNotEmpty
-                    ? NetworkImage(displayAvatar)
-                    : null,
+                backgroundImage:
+                    displayAvatar != null && displayAvatar.isNotEmpty
+                        ? NetworkImage(displayAvatar)
+                        : null,
                 child: displayAvatar == null || displayAvatar.isEmpty
                     ? const Icon(Icons.person, color: Colors.white, size: 20)
                     : null,
@@ -561,7 +550,7 @@ class HomeWidgets {
 
   static void _showPostOptions(BuildContext context, PostModel post) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    
+
     showModalBottomSheet(
       context: context,
       builder: (sheetCtx) => SafeArea(
@@ -571,16 +560,17 @@ class HomeWidgets {
             if (currentUserId == post.userId)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
+                title: const Text('Delete Post',
+                    style: TextStyle(color: Colors.red)),
                 onTap: () async {
                   // Capture the provider and scaffold messenger outside the async gap
                   final provider = context.read<PostProvider>();
                   final navigator = Navigator.of(sheetCtx);
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
-                  
+
                   // Pop the bottom sheet first
                   navigator.pop();
-                  
+
                   try {
                     await provider.deletePost(post);
                     scaffoldMessenger.showSnackBar(
@@ -676,90 +666,87 @@ class StoryViewer extends StatelessWidget {
               Center(
                 child: currentStory.type == StoryMediaType.image
                     ? (currentStory.mediaUrl != null &&
-                              currentStory.mediaUrl!.isNotEmpty
-                          ? Image.network(
-                              currentStory.mediaUrl!,
-                              fit: BoxFit.contain,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                      ),
-                                    );
-                                  },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.black,
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.broken_image_outlined,
-                                        color: Colors.white,
-                                        size: 50,
-                                      ),
-                                      SizedBox(height: 10),
-                                      Text(
-                                        "Content unavailable",
-                                        style: TextStyle(color: Colors.white),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            )
-                          : (currentStory.file != null
-                                ? Image.file(
-                                    currentStory.file!,
-                                    fit: BoxFit.contain,
-                                  )
-                                : const SizedBox.shrink()))
-                    : (provider.hasError
-                          ? Container(
-                              color: Colors.black,
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: Colors.white,
-                                    size: 50,
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    "Video unavailable",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : (provider.isInitialized &&
-                                    provider.videoController != null
-                                ? AspectRatio(
-                                    aspectRatio: provider
-                                        .videoController!
-                                        .value
-                                        .aspectRatio,
-                                    child: VideoPlayer(
-                                      provider.videoController!,
+                            currentStory.mediaUrl!.isNotEmpty
+                        ? Image.network(
+                            currentStory.mediaUrl!,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.black,
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white,
+                                      size: 50,
                                     ),
-                                  )
-                                : Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      if (currentStory.thumbnailUrl != null &&
-                                          currentStory.thumbnailUrl!.isNotEmpty)
-                                        Image.network(
-                                          currentStory.thumbnailUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const SizedBox.shrink(),
-                                        ),
-                                      const CircularProgressIndicator(),
-                                    ],
-                                  ))),
+                                    SizedBox(height: 10),
+                                    Text(
+                                      "Content unavailable",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          )
+                        : (currentStory.file != null
+                            ? Image.file(
+                                currentStory.file!,
+                                fit: BoxFit.contain,
+                              )
+                            : const SizedBox.shrink()))
+                    : (provider.hasError
+                        ? Container(
+                            color: Colors.black,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                                SizedBox(height: 10),
+                                Text(
+                                  "Video unavailable",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          )
+                        : (provider.isInitialized &&
+                                provider.videoController != null
+                            ? AspectRatio(
+                                aspectRatio:
+                                    provider.videoController!.value.aspectRatio,
+                                child: VideoPlayer(
+                                  provider.videoController!,
+                                ),
+                              )
+                            : Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  if (currentStory.thumbnailUrl != null &&
+                                      currentStory.thumbnailUrl!.isNotEmpty)
+                                    Image.network(
+                                      currentStory.thumbnailUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const SizedBox.shrink(),
+                                    ),
+                                  const CircularProgressIndicator(),
+                                ],
+                              ))),
               ),
 
               // Segmented Progress Bar
@@ -782,9 +769,8 @@ class StoryViewer extends StatelessWidget {
                                 minHeight: 2,
                               )
                             : LinearProgressIndicator(
-                                value: index < provider.currentIndex
-                                    ? 1.0
-                                    : 0.0,
+                                value:
+                                    index < provider.currentIndex ? 1.0 : 0.0,
                                 backgroundColor: Colors.white24,
                                 valueColor: const AlwaysStoppedAnimation(
                                   Colors.white,
@@ -915,8 +901,7 @@ class StoryViewer extends StatelessWidget {
                         radius: 16,
                         backgroundColor: Colors.grey[300],
                         child: ClipOval(
-                          child:
-                              (currentStory.userPhoto != null &&
+                          child: (currentStory.userPhoto != null &&
                                   currentStory.userPhoto!.isNotEmpty)
                               ? Image.network(
                                   currentStory.userPhoto!,
@@ -932,42 +917,40 @@ class StoryViewer extends StatelessWidget {
                                   },
                                 )
                               : (userData.userProfile?.photoUrl != null &&
-                                    userData.userProfile!.photoUrl.isNotEmpty &&
-                                    currentStory.userId ==
-                                        Supabase
-                                            .instance
-                                            .client
-                                            .auth
-                                            .currentUser
-                                            ?.id)
-                              ? (userData.userProfile!.photoUrl.startsWith(
+                                      userData
+                                          .userProfile!.photoUrl.isNotEmpty &&
+                                      currentStory.userId ==
+                                          Supabase.instance.client.auth
+                                              .currentUser?.id)
+                                  ? (userData.userProfile!.photoUrl.startsWith(
                                       'http',
                                     )
-                                    ? Image.network(
-                                        userData.userProfile!.photoUrl,
-                                        width: 32,
-                                        height: 32,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.file(
-                                        File(userData.userProfile!.photoUrl),
-                                        width: 32,
-                                        height: 32,
-                                        fit: BoxFit.cover,
-                                      ))
-                              : Image.network(
-                                  'https://i.pravatar.cc/150?u=me',
-                                  width: 32,
-                                  height: 32,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 20,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                ),
+                                      ? Image.network(
+                                          userData.userProfile!.photoUrl,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          File(userData.userProfile!.photoUrl),
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                        ))
+                                  : Image.network(
+                                      'https://i.pravatar.cc/150?u=me',
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.person,
+                                          size: 20,
+                                          color: Colors.grey,
+                                        );
+                                      },
+                                    ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1050,8 +1033,7 @@ class StoryViewer extends StatelessWidget {
                         radius: 18,
                         backgroundColor: Colors.grey[300],
                         child: ClipOval(
-                          child:
-                              (currentStory.userPhoto != null &&
+                          child: (currentStory.userPhoto != null &&
                                   currentStory.userPhoto!.isNotEmpty)
                               ? Image.network(
                                   currentStory.userPhoto!,
@@ -1067,40 +1049,39 @@ class StoryViewer extends StatelessWidget {
                                   },
                                 )
                               : (userData.userProfile?.photoUrl != null &&
-                                    userData.userProfile!.photoUrl.isNotEmpty &&
-                                    currentStory.userId ==
-                                        Supabase
-                                            .instance
-                                            .client
-                                            .auth
-                                            .currentUser
-                                            ?.id)
-                              ? (userData.userProfile!.photoUrl.startsWith('http')
-                                    ? Image.network(
-                                        userData.userProfile!.photoUrl,
-                                        width: 36,
-                                        height: 36,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.file(
-                                        File(userData.userProfile!.photoUrl),
-                                        width: 36,
-                                        height: 36,
-                                        fit: BoxFit.cover,
-                                      ))
-                              : Image.network(
-                                  'https://i.pravatar.cc/150?u=me',
-                                  width: 36,
-                                  height: 36,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 24,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                ),
+                                      userData
+                                          .userProfile!.photoUrl.isNotEmpty &&
+                                      currentStory.userId ==
+                                          Supabase.instance.client.auth
+                                              .currentUser?.id)
+                                  ? (userData.userProfile!.photoUrl
+                                          .startsWith('http')
+                                      ? Image.network(
+                                          userData.userProfile!.photoUrl,
+                                          width: 36,
+                                          height: 36,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          File(userData.userProfile!.photoUrl),
+                                          width: 36,
+                                          height: 36,
+                                          fit: BoxFit.cover,
+                                        ))
+                                  : Image.network(
+                                      'https://i.pravatar.cc/150?u=me',
+                                      width: 36,
+                                      height: 36,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.person,
+                                          size: 24,
+                                          color: Colors.grey,
+                                        );
+                                      },
+                                    ),
                         ),
                       ),
 
@@ -1224,8 +1205,8 @@ class StoryViewer extends StatelessWidget {
                 onTap: () async {
                   final storyToDelete = provider.currentStory;
                   await context.read<StoryProvider>().deleteStory(
-                    storyToDelete,
-                  );
+                        storyToDelete,
+                      );
                   if (context.mounted) Navigator.pop(ctx);
                   if (context.mounted) Navigator.pop(context);
                 },
@@ -1269,15 +1250,13 @@ class _SupabaseVideoWidgetState extends State<_SupabaseVideoWidget> {
   void initState() {
     super.initState();
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize()
-          .then((_) {
-            if (mounted) {
-              setState(() => _initialized = true);
-            }
-          })
-          .catchError((e) {
-            debugPrint('Video init error: $e');
-          });
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() => _initialized = true);
+        }
+      }).catchError((e) {
+        debugPrint('Video init error: $e');
+      });
   }
 
   @override
@@ -1373,26 +1352,26 @@ class _LikeIcon extends StatelessWidget {
           onTap: () {
             if (isMock) {
               context.read<HomePageProvider>().toggleLike(
-                id,
-                currentUserId: currentUserId,
-                userName: dashboard.userName.isNotEmpty
-                    ? dashboard.userName
-                    : 'Me',
-                avatarUrl: dashboard.userPhotoUrl.isNotEmpty
-                    ? dashboard.userPhotoUrl
-                    : 'https://i.pravatar.cc/150?u=me',
-              );
+                    id,
+                    currentUserId: currentUserId,
+                    userName: dashboard.userName.isNotEmpty
+                        ? dashboard.userName
+                        : 'Me',
+                    avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                        ? dashboard.userPhotoUrl
+                        : 'https://i.pravatar.cc/150?u=me',
+                  );
             } else {
               context.read<PostProvider>().toggleLike(
-                id,
-                currentUserId: currentUserId,
-                userName: dashboard.userName.isNotEmpty
-                    ? dashboard.userName
-                    : 'Me',
-                avatarUrl: dashboard.userPhotoUrl.isNotEmpty
-                    ? dashboard.userPhotoUrl
-                    : 'https://i.pravatar.cc/150?u=me',
-              );
+                    id,
+                    currentUserId: currentUserId,
+                    userName: dashboard.userName.isNotEmpty
+                        ? dashboard.userName
+                        : 'Me',
+                    avatarUrl: dashboard.userPhotoUrl.isNotEmpty
+                        ? dashboard.userPhotoUrl
+                        : 'https://i.pravatar.cc/150?u=me',
+                  );
             }
           },
           child: Icon(
@@ -1455,13 +1434,11 @@ class _LikeIcon extends StatelessWidget {
                     final liker = likers[index];
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundImage:
-                            liker['avatar'] != null &&
+                        backgroundImage: liker['avatar'] != null &&
                                 liker['avatar'].toString().isNotEmpty
                             ? NetworkImage(liker['avatar'])
                             : null,
-                        child:
-                            liker['avatar'] == null ||
+                        child: liker['avatar'] == null ||
                                 liker['avatar'].toString().isEmpty
                             ? const Icon(Icons.person, color: Colors.white)
                             : null,

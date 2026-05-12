@@ -162,14 +162,14 @@ class _MessageScreenState extends State<MessageScreen>
 
                       _animationController
                           .animateTo(
-                            0,
-                            curve: Curves.easeOut,
-                            duration: const Duration(milliseconds: 200),
-                          )
+                        0,
+                        curve: Curves.easeOut,
+                        duration: const Duration(milliseconds: 200),
+                      )
                           .then((_) {
-                            _animationController.removeListener(listener);
-                            provider.updateDragOffset(0);
-                          });
+                        _animationController.removeListener(listener);
+                        provider.updateDragOffset(0);
+                      });
                     },
                     child: Builder(
                       builder: (context) {
@@ -206,18 +206,15 @@ class _MessageScreenState extends State<MessageScreen>
                             // Grouping Logic (Reversed List: index-1 is Newer/Below)
                             // We show avatar if the message BELOW (newer) is from a different sender,
                             // or if this is the newest message (index 0).
-                            final newerMsg = (index > 0)
-                                ? allMessages[index - 1]
-                                : null;
+                            final newerMsg =
+                                (index > 0) ? allMessages[index - 1] : null;
 
-                            final bool isLastInGroup =
-                                !isMe &&
+                            final bool isLastInGroup = !isMe &&
                                 (newerMsg == null ||
                                     newerMsg['sender_id'] != msg['sender_id']);
 
                             // Margin bottom: If newer message (visually below) is same sender, small margin.
-                            final double marginBottom =
-                                (newerMsg != null &&
+                            final double marginBottom = (newerMsg != null &&
                                     newerMsg['sender_id'] == msg['sender_id'])
                                 ? 2
                                 : 10;
@@ -267,10 +264,10 @@ class _MessageScreenState extends State<MessageScreen>
                                               radius: 16,
                                               backgroundImage:
                                                   CachedNetworkImageProvider(
-                                                    cleanUrl(
-                                                      widget.friendPhoto,
-                                                    ),
-                                                  ),
+                                                cleanUrl(
+                                                  widget.friendPhoto,
+                                                ),
+                                              ),
                                             )
                                           else
                                             const SizedBox(width: 32),
@@ -287,17 +284,16 @@ class _MessageScreenState extends State<MessageScreen>
                                             },
                                             child: Container(
                                               constraints: BoxConstraints(
-                                                maxWidth:
-                                                    MediaQuery.of(
+                                                maxWidth: MediaQuery.of(
                                                       context,
                                                     ).size.width *
                                                     0.75,
                                               ),
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    vertical: 12,
-                                                    horizontal: 16,
-                                                  ),
+                                                vertical: 12,
+                                                horizontal: 16,
+                                              ),
                                               decoration: BoxDecoration(
                                                 color: isMe
                                                     ? const Color(0xFF6200EE)
@@ -326,8 +322,8 @@ class _MessageScreenState extends State<MessageScreen>
                                                         BoxShadow(
                                                           color: Colors.black
                                                               .withOpacity(
-                                                                0.05,
-                                                              ),
+                                                            0.05,
+                                                          ),
                                                           blurRadius: 2,
                                                           offset: const Offset(
                                                             0,
@@ -337,9 +333,8 @@ class _MessageScreenState extends State<MessageScreen>
                                                       ],
                                               ),
                                               child: Opacity(
-                                                opacity: isOptimistic
-                                                    ? 0.7
-                                                    : 1.0,
+                                                opacity:
+                                                    isOptimistic ? 0.7 : 1.0,
                                                 child: Text(
                                                   msg['text'] ?? '',
                                                   style: TextStyle(
@@ -407,7 +402,7 @@ class _MessageScreenState extends State<MessageScreen>
                                   decoration: BoxDecoration(
                                     color: Colors.grey[100],
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border(
+                                    border: const Border(
                                       left: BorderSide(
                                         color: Colors.blueAccent,
                                         width: 4,
@@ -428,18 +423,20 @@ class _MessageScreenState extends State<MessageScreen>
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              provider.replyToMessage!['sender_id'] ==
+                                              provider.replyToMessage![
+                                                          'sender_id'] ==
                                                       provider.currentUserId
                                                   ? 'You'
                                                   : widget.friendName,
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 12,
                                                 color: Colors.blueAccent,
                                               ),
                                             ),
                                             Text(
-                                              provider.replyToMessage!['text'] ??
+                                              provider.replyToMessage![
+                                                      'text'] ??
                                                   '',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,

@@ -34,7 +34,7 @@ class _PracticeState extends State<Practice> {
                     onPressed: () {
                       providerPractice.getResult(name.text, phoneNumber.text);
                     },
-                    child: Text('post'),
+                    child: const Text('post'),
                   ),
                 ],
               );

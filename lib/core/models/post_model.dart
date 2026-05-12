@@ -65,7 +65,7 @@ class PostModel {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : DateTime.now(),
-      userName: profile != null 
+      userName: profile != null
           ? ((profile['username'] as String?)?.isNotEmpty == true
               ? profile['username'] as String?
               : profile['full_name'] as String?)
